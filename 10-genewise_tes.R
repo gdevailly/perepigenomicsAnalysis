@@ -1,0 +1,142 @@
+setwd("/groups2/joshi_grp/guillaume/cascade/data/wgbs/roadmap")
+
+source("../../../Rscripts/6-plotingFunctions.R")
+source("../../../Rscripts/11-geneWiseFunctions.R")
+
+library(readr)
+library(parallel)
+
+# metadata building
+metadata <- read_tsv("EG.mnemonics.name.txt", col_names = FALSE)
+colnames(metadata) <- c("id", "short", "name")
+myProms <- "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"
+roadmapExp <- list(
+    pc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.pc"),
+    nc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.nc"),
+    rb = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.rb")
+)
+roadmapExp <- do.call(rbind, roadmapExp)
+refTable <- read_tsv(
+    "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.bed",
+    col_names = FALSE
+)
+colnames(refTable) <- c("chr", "start", "end", "gene_id", "score", "strand", "gene_type", "symbol")
+refTable$gene_id <-  sub("\\.[0-9]*", "", refTable$gene_id)
+metadata$id[!metadata$id %in% colnames(roadmapExp)] # missing E008, E017, E021, E022, check newer data?
+metadata <- filter(metadata, id %in% colnames(roadmapExp))
+
+t0 <- Sys.time()
+dataForAllSamples <- mclapply(
+    seq_len(nrow(metadata)),
+    function(i) {
+        dataForPlot <- extractAndPrepareDataFor(
+            metadata$id[i],
+            myProms,
+            roadmapExp,
+            refgenome = "hg19",
+            bin = 100L,
+            rm0 = TRUE,
+            xmin = 2500L, xmax = 2500L, type = "ef",
+            add_heatmap = TRUE,
+            verbose = FALSE
+        )
+        dataForPlot <- addGeneTypeInfo(dataForPlot, refTable)
+        message(paste(metadata$id[i], "done!"))
+        return(dataForPlot)
+    },
+    mc.cores = 33, mc.preschedule = FALSE
+)
+Sys.time() - t0 # 2 minutes
+names(dataForAllSamples) <- metadata$short
+
+# gene extraction
+
+# t0 <- Sys.time()
+# geneWiseData <- mclapply(
+#     dataForAllSamples[[1]]$gene_id,
+#     function(x) extractGeneWiseDataFor(x, dataForAllSamples),
+#     mc.cores = 32
+# )
+# Sys.time() - t0 # long, ~1h15
+# names(geneWiseData) <- dataForAllSamples[[1]]$gene_id
+# save(geneWiseData, file = "../../Rdata/geneWiseData_tes_cascade.RData")
+load("../../Rdata/geneWiseData_tes_cascade.RData")
+
+n <- 33
+p <- plot_grid(
+    geneWiseData[[n]] %>% ggplot(aes(x = CpG_sites   , y = log10(exp + 1))) + geom_point(col = "darkred"  ) + geom_smooth(method = "lm"),
+    geneWiseData[[n]] %>% ggplot(aes(x = mCpG_ratio  , y = log10(exp + 1))) + geom_point(col = "darkblue" ) + geom_smooth(method = "lm"),
+    geneWiseData[[n]] %>% ggplot(aes(x = mCpG_density, y = log10(exp + 1))) + geom_point(col = "purple"   ) + geom_smooth(method = "lm"),
+    geneWiseData[[n]] %>% ggplot(aes(x = coverage    , y = log10(exp + 1))) + geom_point(col = "darkgreen") + geom_smooth(method = "lm"),
+    ncol = 4
+)
+save_plot("../../../plots/lm_ENSG00000152661_tes.pdf", p, base_height = 4, base_width = 14)
+
+
+t0 <- Sys.time()
+modelTable <- getLmAndSd(geneWiseData)
+Sys.time() - t0 # 12 minutes
+
+cvFilter <- function(x, thresholds = c(0.25, 0.5, 0.75), values = c(0.125, 0.375, 0.625, 0.875)) {
+    y <- rep(values[1], length(x))
+    for(i in seq_along(thresholds)) {
+        y[which(x > thresholds[i])] <- values[i + 1]
+    }
+    return(y)
+}
+
+myBoxplotFunc <- function(myTbl, myVarName, colour = "white") {
+    newTbl <- mutate(myTbl, bin = cvFilter(myTbl[, paste0("r2_", myVarName)][[1]]))
+    ylims <- sapply(unique(newTbl$bin), function(x) {
+        newTbl2 <- filter(newTbl, bin == x)
+        boxplot.stats(newTbl2[, paste0("sl_", myVarName)][[1]])$stats[c(1, 5)] * 1.05
+    })
+    ylims <- c(min(ylims[1,]), max(ylims[2,]))
+    eff <- table(newTbl$bin)
+    perc <- round(eff *100 / sum(eff), digits = 1)
+    ann <- paste0(eff, "\n(", perc,"%)")
+    return(ggplot(data = newTbl, aes_string("bin", paste0("sl_", myVarName), group = "bin")) + geom_boxplot(colour = colour, outlier.shape = NA) +
+               coord_cartesian(ylim = ylims) +
+               geom_hline(yintercept = 0) +
+               labs(title = myVarName, x = bquote(R^2), y = "Slope") +
+               annotate("text", x = unique(newTbl$bin), y = ylims[1], label = ann, vjust = 0))
+}
+
+myBoxplotFunc(modelTable, "mCpG_ratio", "blue")
+
+save_plot("../../../plots/slopes_tes_allGenes.pdf", base_height = 4, base_width = 14,
+          ggdraw() +
+              draw_plot(myBoxplotFunc(modelTable, "CpG_sites"   , "red"      ), 0,    0, 0.25, 0.95) +
+              draw_plot(myBoxplotFunc(modelTable, "mCpG_ratio"  , "blue"     ), 0.25, 0, 0.25, 0.95) +
+              draw_plot(myBoxplotFunc(modelTable, "mCpG_density", "purple"   ), 0.5 , 0, 0.25, 0.95) +
+              draw_plot(myBoxplotFunc(modelTable, "coverage"    , "darkgreen"), 0.75, 0, 0.25, 0.95) +
+              draw_label("All genes, regression analysis", x = 0.5, y = 0.975)
+)
+
+
+modelTable <- inner_join(modelTable, refTable, by = "gene_id")
+
+geneTypes <- table(modelTable$gene_type) %>% sort(decreasing = TRUE) %>% subset(., . >= 1) %>% names
+
+t0 <- Sys.time()
+pdf("../../../plots/slopes_tes_allGeneType.pdf", height = 4, width = 14)
+p <- ggdraw() +
+    draw_plot(myBoxplotFunc(modelTable, "CpG_sites"   , "red"      ), 0,    0, 0.25, 0.95) +
+    draw_plot(myBoxplotFunc(modelTable, "mCpG_ratio"  , "blue"     ), 0.25, 0, 0.25, 0.95) +
+    draw_plot(myBoxplotFunc(modelTable, "mCpG_density", "purple"   ), 0.5 , 0, 0.25, 0.95) +
+    draw_plot(myBoxplotFunc(modelTable, "coverage"    , "darkgreen"), 0.75, 0, 0.25, 0.95) +
+    draw_label("All genes, regression analysis", x = 0.5, y = 0.975)
+print(p)
+for (i in geneTypes) {
+    myTable <- filter(modelTable, gene_type == i)
+    p <- ggdraw() +
+        draw_plot(myBoxplotFunc(myTable, "CpG_sites"   , "red"      ), 0,    0, 0.25, 0.95) +
+        draw_plot(myBoxplotFunc(myTable, "mCpG_ratio"  , "blue"     ), 0.25, 0, 0.25, 0.95) +
+        draw_plot(myBoxplotFunc(myTable, "mCpG_density", "purple"   ), 0.5 , 0, 0.25, 0.95) +
+        draw_plot(myBoxplotFunc(myTable, "coverage"    , "darkgreen"), 0.75, 0, 0.25, 0.95) +
+        draw_label(paste0(i, ", regression analysis"), x = 0.5, y = 0.975)
+    print(p)
+}
+dev.off()
+Sys.time() - t0
+
