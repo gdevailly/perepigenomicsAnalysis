@@ -5,6 +5,7 @@ library(tidyverse)
 files <- list.files() %>% grep(".RData$", ., value = TRUE)
 
 # fast, but can easily be parallelized
+t0 <- Sys.time() # 3 minutes
 walk(files, function(file) {
     myVar <- load(file)
     byFeatureData <- get(myVar)
@@ -12,6 +13,7 @@ walk(files, function(file) {
     save(byFeatureData, file = file)
     message(paste(file, "has been renamed!"))
 })
+Sys.time() - t0
 
 
 # metadata contruction
@@ -19,17 +21,23 @@ walk(files, function(file) {
 byFeatureMd <- tibble(
     file = list.files(),
     feature = case_when(
-        grepl("exon" , file, fixed = TRUE) ~ "exon",
-        grepl("_tes_", file, fixed = TRUE) ~ "TES",
+        grepl("exonFpkm" , file, fixed = TRUE) ~ "exonFpkm",
+        grepl("exonPsi" , file, fixed = TRUE) ~ "exonPsi",
+        grepl("_tes_", file, fixed = TRUE) ~ "TTS",
         grepl("_tss_", file, fixed = TRUE) ~ "TSS",
+        grepl("exonWiseData_cascade.RData", file, fixed = TRUE) ~ "exonFpkm",
         TRUE ~ NA_character_
     ),
     assay = case_when(
         grepl("_cascade.RData", file, fixed = TRUE) ~ "WGBS",
+        file == "geneWiseData_exonPsi_wgbs.RData" ~ "WGBS",
         TRUE ~ strsplit(file, "_", fixed = TRUE) %>%
             map_chr(last) %>%
             sub(".RData", "", .)
     )
 )
+
+table(byFeatureMd$feature) # ok, 24 of each
+table(byFeatureMd$assay) # ok, 4 everywhere
 
 write_tsv(byFeatureMd, "../availableByFeature.tsv")

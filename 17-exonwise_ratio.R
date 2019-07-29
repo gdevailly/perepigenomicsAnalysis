@@ -21,6 +21,9 @@ metadata <- filter(metadata, id %in% colnames(innerExonRatio))
 exonInfo <- innerExonQuant[, c("chr", "start", "end", "exon_location", "score", "strand")]
 write.table(exonInfo, file = "inner_exon.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
 
+metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
+metadata <- filter(metadata, id %in% colnames(psis))
+
 setwd("wgbs/roadmap")
 
 exonInfoPath <- "../../inner_exon.bed"
@@ -58,6 +61,62 @@ names(dataForAllSamples) <- metadata$short
 # Sys.time() - t0 # long, 45 minutes
 # names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
 # save(exonWiseData, file = "../../Rdata/exonWiseData_cascade.RData")
+
+
+# psis ---------------
+metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
+colnames(metadata) <- c("id", "short", "name")
+
+psis <- readRDS("Rdata/innerExonPsi.rds")
+exon_location <- rownames(psis)
+psis <- bind_cols(
+    data_frame(name = exon_location),
+    as_data_frame(psis)
+)
+psis <- dplyr::rename(psis, exon_location = name)
+
+metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
+metadata <- filter(metadata, id %in% colnames(psis))
+
+setwd("wgbs/roadmap")
+exonInfoPath <- "../../inner_exon_psis.bed"
+
+t0 <- Sys.time()
+dataForAllSamples <- mclapply(
+    seq_len(nrow(metadata)),
+    function(i) {
+        dataForPlot <- extractAndPrepareDataForExons(
+            metadata$id[i],
+            exonInfoPath,
+            psis,
+            refgenome = "hg19",
+            bin = 50L,
+            rm0 = TRUE,
+            xmin = 1000L, xmax = 1000L, type = "mf",
+            add_heatmap = TRUE,
+            verbose = FALSE
+        )
+
+        message(paste(metadata$id[i], "done!"))
+        return(dataForPlot)
+    },
+    mc.cores = 33, mc.preschedule = FALSE
+)
+Sys.time() - t0 # 2 minutes
+names(dataForAllSamples) <- metadata$short
+
+t0 <- Sys.time()
+exonWiseData <- mclapply(
+    dataForAllSamples[[1]]$exon_location,
+    function(x) extractExonWiseDataFor(x, dataForAllSamples, windows = 19:23), # 19:23 -> -100 +100 bp
+    mc.cores = 32
+)
+Sys.time() - t0 # long, 45 minutes
+names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
+save(exonWiseData, file = "../../Rdata/geneWiseData_exonPsi_wgbs.RData")
+
+
+# ------------
 
 load("../../Rdata/exonWiseData_cascade.RData")
 library(cowplot)

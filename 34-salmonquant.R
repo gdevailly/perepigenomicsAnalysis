@@ -30,8 +30,8 @@ se_commands <- map_chr(
             map_chr(last) %>%
             paste0("rnaseq_reads/", .) %>%
             paste(collapse = " ")
-        index <- "annotation/gencode.v24.transcripts.salmon.index"
-        genes <- "annotation/gencode.v24.annotation.gff3"
+        index <- "annotation/gencode.v29.transcripts.salmon.index"
+        genes <- "annotation/gencode.v29.annotation.gff3"
         paste0(
             "salmon quant -i ",
             index,
@@ -39,7 +39,7 @@ se_commands <- map_chr(
             fastq,
             " -p 12 -g ",
             genes,
-            " --seqBias --gcBias --biasSpeedSamp 5 -o salmonQuant/",
+            " --validateMappings --seqBias --gcBias --biasSpeedSamp 5 -o salmonQuant/",
             x
         )
     }
@@ -61,8 +61,8 @@ pe_commands <- map_chr(
             paste(collapse = " ")
         if (length(fastq1) != length(fastq2)) stop("Not the same numbre of read pairs!")
 
-        index <- "annotation/gencode.v24.transcripts.salmon.index"
-        genes <- "annotation/gencode.v24.annotation.gff3"
+        index <- "annotation/gencode.v29.transcripts.salmon.index"
+        genes <- "annotation/gencode.v29.annotation.gff3"
         paste0(
             "salmon quant -i ",
             index,
@@ -72,7 +72,7 @@ pe_commands <- map_chr(
             fastq2,
             " -p 12 -g ",
             genes,
-            " --seqBias --gcBias --biasSpeedSamp 5 -o salmonQuant/",
+            " --validateMappings --seqBias --gcBias --biasSpeedSamp 5 -o salmonQuant/",
             x
         )
     }

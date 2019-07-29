@@ -16,9 +16,9 @@ colnames(metadata) <- c("id", "short", "name")
 myProms <- "../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"
 
 roadmapExp <- list(
-    pc = read_tsv("../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.pc"),
-    nc = read_tsv("../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.nc"),
-    rb = read_tsv("../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.rb")
+    pc = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.pc"),
+    nc = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.nc"),
+    rb = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.rb")
 )
 roadmapExp <- do.call(rbind, roadmapExp)
 
@@ -170,6 +170,31 @@ names(Dnase) <- dataForDnase[[1]]$gene_id
 
 save(Dnase, file = "Rdata/geneWiseData_tss_Dnase.RData")
 
+## DNAse TES -----------
+t0 <- Sys.time() # 36 minutes
+dataForDnase <- mclapply(
+    DNAse_md$cellCode,
+    function(cellCode) {
+        dnaseData <- prepareDNAseData(cellCode, tssAnno = tes_table, metadataTable = DNAse_md, expressionTable = roadmapExp) %>%
+            addGeneTypeInfo(refTable)
+        message(paste(cellCode, "done!"))
+        return(dnaseData)
+    },
+    mc.cores = 14
+)
+names(dataForDnase) <- DNAse_md$cellCode
+Sys.time() - t0
+
+t0 <- Sys.time()
+Dnase <- mclapply(
+    dataForDnase[[1]]$gene_id,
+    function(x) extractGeneWiseDataForDnase(x, dataForDnase),
+    mc.cores = 24
+)
+Sys.time() - t0
+names(Dnase) <- dataForDnase[[1]]$gene_id
+
+save(Dnase, file = "Rdata/geneWiseData_tes_Dnase.RData")
 
 
 # ploting ------

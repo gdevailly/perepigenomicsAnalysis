@@ -3,7 +3,7 @@ cd ~/work/projects/cascade/data/annotations/
 salmon index -v
 # salmon 0.9.1
 
-salmon index --gencode -t gencode.v24.transcripts.fa.gz -i gencode.v24.transcripts.salmon.index
+salmon index --gencode -t gencode.v29.transcripts.fa.gz -i gencode.v29.transcripts.salmon.index
 
 salmon quant
 # --seqBias

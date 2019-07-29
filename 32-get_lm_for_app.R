@@ -1,13 +1,14 @@
 library(here)
 library(tidyverse)
+library(furrr); plan(multiprocess(workers = 12))
 
 source(here("Rscripts", "11-geneWiseFunctions.R"))
 source(here("Rscripts", "29-geneWiseFunctions_hisMods.R"))
 
 byFeatureMd <- read_tsv(here("perepigenomics", "data", "availableByFeature.tsv"))
 
-t0 <- Sys.time() # 2h
-walk(
+t0 <- Sys.time() # 41 minutes
+future_map_chr(
     seq_len(nrow(byFeatureMd)),
     function(i) {
         load(here("perepigenomics", "data", "Rdata", byFeatureMd$file[i]))
@@ -24,6 +25,7 @@ walk(
         )
 
         message(paste("Done for", byFeatureMd$file[i], " !"))
+        return(paste("Done for", byFeatureMd$file[i], " !"))
     }
 )
 Sys.time() - t0

@@ -125,6 +125,12 @@ addGeneTypeInfo <- function(myCombTable, myRefTable) {
     return(myCombTable)
 }
 
+addLengthTypeInfo <- function(myCombTable, myRefTable) {
+    myCombTable <- dplyr::inner_join(myRefTable, myCombTable, by = "gene_id")
+    myCombTable <- dplyr::arrange(myCombTable, desc(exp))
+    myCombTable <- dplyr::select(myCombTable, -chr, -start, -end, -score, -strand, -symbol, -gene_length)
+    return(myCombTable)
+}
 # plot average profile plot, used by plotTraceAndKeyAndProfile ----------------------
 plotDispersion <- function(
     myMat,
@@ -528,14 +534,14 @@ plotMetricAndProfile <- function(
     par(mar = c(0, 0.8, 4, 0))
     if(withGeneType) {
         geneType <- as.numeric(factor(myDF$gene_type))
-        
+
         # compaction to avoid ploting artefacts
         geneTypeShort <- data_frame(gene_type = geneType, bin = ntile(seq_len(length(geneType)), npix_height)) %>%
             group_by(bin) %>%
             summarise(mode = findMode(gene_type)) %>%
             dplyr::select(mode) %>%
             unlist
-        
+
         image(t(rev(geneTypeShort)), col = geneTypePalette(length(unique(myDF$gene_type))), axes = FALSE,
               breaks = seq(0.5, length(unique(myDF$gene_type)) + 0.5, by = 1))
         box()
@@ -553,14 +559,14 @@ plotMetricAndProfile <- function(
     # bining
     par(mar = c(0, 0.8, 4, 0))
     if(!is.null(bins)) {
-        
+
         # compaction to avoid ploting artefacts
         binShort <- data_frame(x = bins, bin = ntile(seq_len(length(bins)), npix_height)) %>%
             group_by(bin) %>%
             summarise(mode = findMode(x)) %>%
             dplyr::select(mode) %>%
             unlist
-        
+
         image(t(rev(as.matrix(binShort))), col = colorRampPalette(c("magenta", "black", "green"))(length(unique(bins))), axes = FALSE)
         at <- c(1 - sapply(
             unique(bins),
@@ -576,7 +582,7 @@ plotMetricAndProfile <- function(
             summarise(mode = findMode(x)) %>%
             dplyr::select(mode) %>%
             unlist
-        
+
         image(t(rev(as.matrix(binShort))), col = colorRampPalette(c("magenta", "black", "green"))(nbin), axes = FALSE)
         axis(4, at = seq(0, 1, length.out = nbin + 1), labels = NA)
     }

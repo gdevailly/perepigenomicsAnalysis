@@ -81,7 +81,9 @@ prepareDNAseData <- function(myCellCode, tssAnno, metadataTable, expressionTable
                 by = "gene_id"
             ) %>%
             rename_(exp = myCellCode) %>%
-            arrange(desc(exp))
+            mutate(rand = rnorm(length(exp))) %>%
+            arrange(desc(exp), rand) %>%
+            dplyr::select(-rand)
     )
 }
 
@@ -118,7 +120,9 @@ prepareDNAseDataExons <- function(myCellCode, annoTable, metadataTable, metricTa
                 by = "name"
             ) %>%
             rename_(exp = myCellCode) %>%
-            arrange(desc(exp))
+            mutate(rand = rnorm(length(exp))) %>%
+            arrange(desc(exp), rand) %>%
+            dplyr::select(-rand)
     )
 }
 
@@ -155,7 +159,9 @@ prepareHisModData <- function(i, tssAnno, metadataTable, expressionTable, endFea
                 by = "gene_id"
             ) %>%
             rename_(exp = metadataTable[i,]$cellCode) %>%
-            arrange(desc(exp))
+            mutate(rand = rnorm(length(exp))) %>% # shuffle ties
+            arrange(desc(exp), rand) %>%
+            dplyr::select(-rand)
     )
 }
 
@@ -192,7 +198,9 @@ prepareHisModDataExons <- function(i, annoTable, metadataTable, metricTable, end
                 by = "name"
             ) %>%
             rename_(exp = metadataTable[i,]$cellCode) %>%
-            arrange(desc(exp))
+            mutate(rand = rnorm(length(exp))) %>%
+            arrange(desc(exp), rand) %>%
+            dplyr::select(-rand)
     )
 }
 
