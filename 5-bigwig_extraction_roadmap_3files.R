@@ -1,6 +1,15 @@
 # requires betdools:
 # module load apps/gcc/BEDTools/2.25.0
 
+# bash  ------------
+# 2016-05-02
+# download all from http://egg2.wustl.edu/roadmap/data/byDataType/dnamethylation/WGBS/
+
+bedtools makewindows -g hg19.autosoms.size -w 250 -s 100 > hg19_binned_w250_s100.bed # no X, Y, M and haplotypes
+sort -i hg19_binned_w250_s100.bed > hg19_binned_w250_s100_s.bed
+
+# then in R -----------
+
 setwd("/groups2/joshi_grp/guillaume/cascade/data/wgbs/roadmap/")
 library(rtracklayer)
 library(dplyr)

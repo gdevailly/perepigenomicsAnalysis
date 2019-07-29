@@ -1,4 +1,4 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/")
+setwd("/media/gdevailly/SANS TITRE/inra/cascade")
 
 library(readr)
 library(dplyr)
@@ -6,8 +6,8 @@ library(purrr)
 library(tidyr)
 library(parallel)
 
-source("../Rscripts/6-plotingFunctions.R")
-source("../Rscripts/20-functions_for_histoneMarks.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
 
 # metadata loading, messy ---------------------------------------
 metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
