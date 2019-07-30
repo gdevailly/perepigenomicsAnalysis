@@ -29,7 +29,7 @@ extractValuesFormPsa <- function(myPsa) {
 # add_heatmap = TRUE,
 # verbose = TRUE
 getPlotSetArrayFor <- function(rodmapCode, annotationPath, ...) {
-    myBW <- paste0(rodmapCode, c(
+    myBW <- paste0("data/wgbs/roadmap/", rodmapCode, c(
         "_CpG_sites_hg19.bw",
         "_mCpG_ratio_hg19.bw",
         "_mCpG_density_hg19.bw",
@@ -277,12 +277,12 @@ plotExpression <- function(
     box()
     axis(3)
     axis(2, at = c(1, nrow(myDF)))
-    mtext(side = 3, "log10(FPKM+1)", line = 1.4, cex = 0.8)
+    mtext(side = 3, "log10(TPM+1)", line = 1.4, cex = 0.8)
 
     # expression boxplot
     myExprs <- lapply(seq_len(profile.bin), function(x) log10(subset(myDF$exp, ntile(seq_len(nrow(myDF)), profile.bin) == x) + 1))
     par(mar = c(2.5, 2.5, 0, 0))
-    boxplot(myExprs, col = profile.palette(profile.bin), ylab = "log10(FPKM+1)", xlab = "bin", pch = 19, ylim = expLimLog10)
+    boxplot(myExprs, col = profile.palette(profile.bin), ylab = "log10(TPM+1)", xlab = "bin", pch = 19, ylim = expLimLog10)
     par(mar = oldMar)
 }
 
@@ -293,7 +293,7 @@ plotExpression2 <- function(
     profile.palette =  colorRampPalette(c("magenta", "black", "green")),
     expTransf = function(x) log10(x+1),
     expLim = c(0, 4),
-    axis.text = "log10(FPKM+1)",
+    axis.text = "log10(TPM+1)",
     abline.v = NULL
 ) {
     oldMar <- par()$mar
@@ -490,6 +490,25 @@ plotWidthAndProfile <- function(
     layout(1)
 }
 
+# mean of color vector (util) ------------
+mean_color <- function(mycolors) {
+    R     <- strtoi(x = substr(mycolors,2,3), base = 16)
+    G     <- strtoi(x = substr(mycolors,4,5), base = 16)
+    B     <- strtoi(x = substr(mycolors,6,7), base = 16)
+    alpha <- strtoi(x = substr(mycolors,8,9), base = 16)
+
+    return(
+        rgb(
+            red   = round(mean(R)),
+            green = round(mean(G)),
+            blue  = round(mean(B)),
+            alpha = round(mean(alpha)),
+            maxColorValue = 255
+        )
+    )
+}
+
+
 # ---------------------------
 plotMetricAndProfile <- function(
     myDF,
@@ -507,7 +526,7 @@ plotMetricAndProfile <- function(
     blackEqualLow = FALSE,
     expTransf = function(x) log10(x+1),
     expLim = c(0, 4),
-    exp.text = "log10(FPKM+1)",
+    exp.text = "log10(TPM+1)",
     xlabels = c("-2.5kb", "TSS", "+2.5kb"),
     reversedZOrder = FALSE,
     abline.v = NULL,
@@ -536,14 +555,21 @@ plotMetricAndProfile <- function(
         geneType <- as.numeric(factor(myDF$gene_type))
 
         # compaction to avoid ploting artefacts
-        geneTypeShort <- data_frame(gene_type = geneType, bin = ntile(seq_len(length(geneType)), npix_height)) %>%
+        geneTypeColors <- geneTypePalette(length(unique(myDF$gene_type)))
+        geneTypeShort <- tibble(gene_type = geneTypeColors[geneType], bin = ntile(seq_len(length(geneType)), npix_height)) %>%
             group_by(bin) %>%
-            summarise(mode = findMode(gene_type)) %>%
-            dplyr::select(mode) %>%
+            summarise(meanc = mean_color(gene_type)) %>%
+            dplyr::select(meanc) %>%
             unlist
 
-        image(t(rev(geneTypeShort)), col = geneTypePalette(length(unique(myDF$gene_type))), axes = FALSE,
-              breaks = seq(0.5, length(unique(myDF$gene_type)) + 0.5, by = 1))
+        plot(c(0,1), c(0,1), axes = FALSE, type = "n",  xlab = "", ylab = "", xlim = c(0, 1), ylim = c(0,1), xaxs="i", yaxs="i")
+        rasterImage(
+            as.matrix(geneTypeShort),
+            xleft   = 0,
+            xright  = 1,
+            ybottom = 0,
+            ytop    = 1
+        )
         box()
         mtext(side = 3, "gene\ntype", line = 0.5,  cex = 0.8, las = 2)
         par(mar = c(0, 0, 0, 0))

@@ -1,4 +1,5 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/wgbs/roadmap")
+setwd("~/mnt/genotoul_grp/guillaume/cascade")
+
 library(dplyr)
 library(plotrix)
 library(seqplots)
@@ -6,29 +7,26 @@ library(readr)
 library(svglite)
 library(parallel)
 
-source("../../../Rscripts/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
 
-metadata <- read_tsv("EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-myProms <- "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"
+myProms <- "annotation/gencode.v29.annotation.hg19.middleTSStranscript.light.autosomes.bed"
+salmonExp <- read_tsv("data/rnaseq/salmon_exp_genes_expressed.tsv")
 
-roadmapExp <- list(
-    pc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.pc"),
-    nc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.nc"),
-    rb = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.rb")
-)
-roadmapExp <- do.call(rbind, roadmapExp)
 
 refTable <- read_tsv(
-    "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.bed",
+    "annotation/gencode.v29.annotation.hg19.middleTSStranscript.bed",
     col_names = FALSE
 )
 colnames(refTable) <- c("chr", "start", "end", "gene_id", "score", "strand", "gene_type", "symbol")
 refTable$gene_id <-  sub("\\.[0-9]*", "", refTable$gene_id)
 refTable <- filter(refTable, chr %in% paste0("chr", 1:22))
-metadata$id[!metadata$id %in% colnames(roadmapExp)] # missing E008, E017, E021, E022, check newer data?
-metadata <- filter(metadata, id %in% colnames(roadmapExp))
+refTable <- filter(refTable, gene_id %in% salmonExp$gene_id)
+metadata$id[!metadata$id %in% colnames(salmonExp)] # missing E008, E017, E021, E022, "E024" "E053" "E054" "E058" "E070" "E071"
+metadata <- filter(metadata, id %in% colnames(salmonExp))
+
 
 # adundant_gene_types <- dplyr::select(refTable, gene_type) %>%
 #     dplyr::group_by(gene_type) %>%
@@ -40,20 +38,21 @@ metadata <- filter(metadata, id %in% colnames(roadmapExp))
 # adundant_gene_types <- adundant_gene_types[-12] # TEC genes are mostly absent from data
 
 adundant_gene_types <- c(
-    "protein_coding", "processed_pseudogene", "lincRNA", "antisense",
-    "snRNA", "unprocessed_pseudogene", "misc_RNA", "miRNA", "snoRNA",
-    "rRNA", "transcribed_unprocessed_pseudogene", "other"
+    "protein_coding", "processed_pseudogene", "lincRNA", "antisense", "unprocessed_pseudogene",
+     "misc_RNA",  "miRNA", "sense_intronic", "transcribed_unprocessed_pseudogene", "snRNA", "snoRNA",
+     "processed_transcript",  "transcribed_processed_pseudogene", "rRNA_pseudogene", "other"
 )
 refTable$gene_type <- if_else(refTable$gene_type %in% adundant_gene_types, refTable$gene_type, "other")
 
-# TSS ------------
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
 
+# TSS ------------
 plotBetterWgbsDataFor <- function(i, npix_height = 600) {
 
     dataForPlot <- extractAndPrepareDataFor(
         metadata$id[i],
         myProms,
-        roadmapExp,
+        salmonExp,
         refgenome = "hg19",
         bin = 100L,
         rm0 = TRUE,
@@ -74,12 +73,12 @@ plotBetterWgbsDataFor <- function(i, npix_height = 600) {
     zlims <- list(zlim1, c(0,1), c(1, 4), zlim4)
 
     for(j in adundant_gene_types) {
-        if(!file.exists(paste0("../../../appPlots/tss/wgbs/", j))) {
-            dir.create(paste0("../../../appPlots/tss/wgbs/", j))
+        if(!file.exists(paste0(preffix, "appPlots/tss/wgbs/", j))) {
+            dir.create(paste0(preffix, "appPlots/tss/wgbs/", j))
         }
         png(
             file = paste0(
-                "../../../appPlots/tss/wgbs/", j, "/", metadata$id[i], ".png"
+                preffix, "appPlots/tss/wgbs/", j, "/", metadata$id[i], ".png"
             ),
             width = 8.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
@@ -102,12 +101,12 @@ plotBetterWgbsDataFor <- function(i, npix_height = 600) {
     geneType[which(grepl("RNA", dataForPlot$gene_type, fixed = TRUE))] <- "RNA gene"
     dataForPlot$gene_type <- geneType
 
-    if(!file.exists(paste0("../../../appPlots/tss/wgbs/all/"))) {
-        dir.create(paste0("../../../appPlots/tss/wgbs/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tss/wgbs/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tss/wgbs/all/"))
     }
     png(
         file = paste0(
-            "../../../appPlots/tss/wgbs/all/", metadata$id[i], ".png"
+            preffix, "appPlots/tss/wgbs/all/", metadata$id[i], ".png"
         ),
         width = 8.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -125,23 +124,23 @@ plotBetterWgbsDataFor <- function(i, npix_height = 600) {
     message(paste(metadata$id[i], "is done!"))
 }
 
-t0 <- Sys.time() # 22 minutes
+t0 <- Sys.time() # 6 minutes
 mclapply(
     seq_len(nrow(metadata)),
     plotBetterWgbsDataFor,
-    mc.cores = 2
+    mc.cores = 8
 ) %>% invisible
 Sys.time() - t0
 
 # TES ----------------------
-TES <- "../../../../annotationData/gencode.v24.annotation.hg19.middleTES.light.autosomes.bed"
+TES <- "annotation/gencode.v29.annotation.hg19.middleTES.light.autosomes.bed"
 
 plotBetterWgbsDataTESFor <- function(i, npix_height = 600) {
 
     dataForPlot <- extractAndPrepareDataFor(
         metadata$id[i],
         TES,
-        roadmapExp,
+        salmonExp,
         refgenome = "hg19",
         bin = 100L,
         rm0 = TRUE,
@@ -162,12 +161,12 @@ plotBetterWgbsDataTESFor <- function(i, npix_height = 600) {
     zlims <- list(zlim1, c(0,1), c(1, 4), zlim4)
 
     for(j in adundant_gene_types) {
-        if(!file.exists(paste0("../../../appPlots/tes/wgbs/", j))) {
-            dir.create(paste0("../../../appPlots/tes/wgbs/", j))
+        if(!file.exists(paste0(preffix, "appPlots/tes/wgbs/", j))) {
+            dir.create(paste0(preffix, "appPlots/tes/wgbs/", j))
         }
         png(
             file = paste0(
-                "../../../appPlots/tes/wgbs/", j, "/", metadata$id[i], ".png"
+                preffix, "appPlots/tes/wgbs/", j, "/", metadata$id[i], ".png"
             ),
             width = 8.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
@@ -191,12 +190,12 @@ plotBetterWgbsDataTESFor <- function(i, npix_height = 600) {
     geneType[which(grepl("RNA", dataForPlot$gene_type, fixed = TRUE))] <- "RNA gene"
     dataForPlot$gene_type <- geneType
 
-    if(!file.exists(paste0("../../../appPlots/tes/wgbs/all/"))) {
-        dir.create(paste0("../../../appPlots/tes/wgbs/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tes/wgbs/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tes/wgbs/all/"))
     }
     png(
         file = paste0(
-            "../../../appPlots/tes/wgbs/all/", metadata$id[i], ".png"
+            preffix, "appPlots/tes/wgbs/all/", metadata$id[i], ".png"
         ),
         width = 8.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -215,11 +214,11 @@ plotBetterWgbsDataTESFor <- function(i, npix_height = 600) {
     message(paste(metadata$id[i], "is done!"))
 }
 
-t0 <- Sys.time() # 21 minutes
+t0 <- Sys.time() # 5 minutes
 mclapply(
     seq_len(nrow(metadata)),
     plotBetterWgbsDataTESFor,
-    mc.cores = 2
+    mc.cores = 8
 ) %>% invisible
 Sys.time() - t0
 

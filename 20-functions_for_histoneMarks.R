@@ -1,6 +1,7 @@
 library(Repitools)
 library(dplyr)
 library(GenomicRanges)
+library(vroom)
 
 
 # readAlign file are kind of bed files found on roadmap .ftp
@@ -9,7 +10,7 @@ importReadAlignAsGranges <- function(
     chromosomes_to_keep = paste0("chr", 1:22),
     col_types = "ciicic"
 ) {
-    read_tsv(paste0("histone/", filePath), col_names = FALSE, col_types = col_types, progress = FALSE) %>% # import is long, file is huge
+    vroom::vroom(paste0("histone/", filePath), delim = "\t", col_names = FALSE, col_types = col_types, progress = FALSE) %>%
         dplyr::select(-X4, -X5) %>%
         dplyr::rename(chr = X1, start = X2, end = X3, strand = X6) %>%
         dplyr::filter(chr %in% chromosomes_to_keep) %>%

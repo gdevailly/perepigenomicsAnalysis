@@ -10,28 +10,23 @@ source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
 
 # metadata loading, messy ---------------------------------------
-metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("~/mnt/genotoul_grp/guillaume/cascade/data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-myProms <- "../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"
+myProms <- "~/mnt/genotoul_grp/guillaume/cascade/annotation/gencode.v29.annotation.hg19.middleTSStranscript.light.autosomes.bed"
 
-roadmapExp <- list(
-    pc = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.pc"),
-    nc = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.nc"),
-    rb = read_tsv("rnaseq/roadmap/57epigenomes.RPKM.rb")
-)
-roadmapExp <- do.call(rbind, roadmapExp)
+salmonExp <- read_tsv("~/mnt/genotoul_grp/guillaume/cascade/data/rnaseq/salmon_exp_genes_expressed.tsv")
 
 refTable <- read_tsv(
-    "../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.bed",
+    "~/mnt/genotoul_grp/guillaume/cascade/annotation/gencode.v29.annotation.hg19.middleTSStranscript.bed",
     col_names = FALSE
 )
 colnames(refTable) <- c("chr", "start", "end", "gene_id", "score", "strand", "gene_type", "symbol")
 refTable$gene_id <-  sub("\\.[0-9]*", "", refTable$gene_id)
 refTable <- filter(refTable, chr %in% paste0("chr", 1:22))
 
-metadata$id[!metadata$id %in% colnames(roadmapExp)] # missing E008, E017, E021, E022, check newer data?
-metadata <- dplyr::filter(metadata, id %in% colnames(roadmapExp))
+metadata$id[!metadata$id %in% colnames(salmonExp)] # missing E008, E017, E021, E022, and more
+metadata <- dplyr::filter(metadata, id %in% colnames(salmonExp))
 
 # build histone marks table --------------
 hisFiles <- data_frame(
@@ -55,6 +50,10 @@ adundant_gene_types <- c(
 )
 refTable$gene_type <- if_else(refTable$gene_type %in% adundant_gene_types, refTable$gene_type, "other")
 
+
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
+
+
 # DNAseI -----------------------------
 DNAse_md <- inner_join(
     dplyr::filter(hisFiles, ChIP  == "DNase") %>%
@@ -68,16 +67,16 @@ DNAse_md <- inner_join(
 # png versions
 plotBetterDNAseDataFor <- function(cellCode, npix_height = 600) {
 
-    dnaseData <- prepareDNAseData(cellCode, tssAnno = tss_table, metadataTable = DNAse_md, expressionTable = roadmapExp) %>%
+    dnaseData <- prepareDNAseData(cellCode, tssAnno = tss_table, metadataTable = DNAse_md, expressionTable = salmonExp) %>%
         addGeneTypeInfo(refTable)
 
     for(i in adundant_gene_types) {
-        if(!file.exists(paste0("../appPlots/tss/dnase1/", i))) {
-            dir.create(paste0("../appPlots/tss/dnase1/", i))
+        if(!file.exists(paste0(preffix, "appPlots/tss/dnase1/", i))) {
+            dir.create(paste0(preffix, "appPlots/tss/dnase1/", i))
         }
         png(
             file = paste0(
-                "../appPlots/tss/dnase1/", i, "/", cellCode, ".png"
+                preffix, "appPlots/tss/dnase1/", i, "/", cellCode, ".png"
             ),
             width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
@@ -101,12 +100,12 @@ plotBetterDNAseDataFor <- function(cellCode, npix_height = 600) {
     geneType[which(grepl("RNA", dnaseData$gene_type, fixed = TRUE))] <- "RNA gene"
     dnaseData$gene_type <- geneType
 
-    if(!file.exists(paste0("../appPlots/tss/dnase1/all/"))) {
-        dir.create(paste0("../appPlots/tss/dnase1/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tss/dnase1/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tss/dnase1/all/"))
     }
     png(
         file = paste0(
-            "../appPlots/tss/dnase1/all/", cellCode, ".png"
+            preffix, "appPlots/tss/dnase1/all/", cellCode, ".png"
         ),
         width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -124,16 +123,17 @@ plotBetterDNAseDataFor <- function(cellCode, npix_height = 600) {
     message(paste(cellCode, "is done!"))
 }
 
-t0 <- Sys.time() # 36 minutes
-mclapply(
+# vroom is parralelized
+t0 <- Sys.time() # 20 minutes
+dummy <- mclapply(
     DNAse_md$cellCode,
     plotBetterDNAseDataFor,
-    mc.cores = 13 # big memmory footprint
-) %>% invisible()
+    mc.cores = 2 # big memmory footprint
+)
 Sys.time() - t0
 
 # danse1 TES ---------------------------
-TES <- "../../annotationData/gencode.v24.annotation.hg19.middleTES.light.autosomes.bed"
+TES <- "~/mnt/genotoul_grp/guillaume/cascade/annotation/gencode.v29.annotation.hg19.middleTES.light.autosomes.bed"
 tes_table <- read_tsv(TES, col_names = FALSE, progress = FALSE)
 colnames(tes_table) <- c("chr", "start", "end", "name", "score", "strand")
 tes_table <- mutate(
@@ -147,18 +147,18 @@ tes_table <- mutate(
 
 plotBetterDNAseTESDataFor <- function(cellCode, npix_height = 600) {
 
-    dnaseData <- prepareDNAseData(cellCode, tssAnno = tes_table, metadataTable = DNAse_md, expressionTable = roadmapExp) %>%
+    dnaseData <- prepareDNAseData(cellCode, tssAnno = tes_table, metadataTable = DNAse_md, expressionTable = salmonExp) %>%
         addGeneTypeInfo(refTable)
 
     for(i in adundant_gene_types) {
-        if(!file.exists(paste0("../appPlots/tes/dnase1/", i))) {
-            dir.create(paste0("../appPlots/tes/dnase1/", i))
+        if(!file.exists(paste0(preffix, "appPlots/tes/dnase1/", i))) {
+            dir.create(paste0(preffix, "appPlots/tes/dnase1/", i))
         }
         png(
             file = paste0(
-                "../appPlots/tes/dnase1/", i, "/", cellCode, ".png"
+                preffix, "appPlots/tes/dnase1/", i, "/", cellCode, ".png"
             ),
-            width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
+            width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13, type = "cairo-png"
         )
         plotMetricAndProfile(
             dplyr::filter(dnaseData, gene_type == i),
@@ -181,12 +181,12 @@ plotBetterDNAseTESDataFor <- function(cellCode, npix_height = 600) {
     geneType[which(grepl("RNA", dnaseData$gene_type, fixed = TRUE))] <- "RNA gene"
     dnaseData$gene_type <- geneType
 
-    if(!file.exists(paste0("../appPlots/tes/dnase1/all/"))) {
-        dir.create(paste0("../appPlots/tes/dnase1/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tes/dnase1/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tes/dnase1/all/"))
     }
     png(
         file = paste0(
-            "../appPlots/tes/dnase1/all/", cellCode, ".png"
+            preffix, "appPlots/tes/dnase1/all/", cellCode, ".png"
         ),
         width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -206,11 +206,11 @@ plotBetterDNAseTESDataFor <- function(cellCode, npix_height = 600) {
 }
 
 t0 <- Sys.time() # 40 minutes
-mclapply(
+dummy <- mclapply(
     DNAse_md$cellCode,
     plotBetterDNAseTESDataFor,
-    mc.cores = 13 # big memmory footprint
-) %>% invisible()
+    mc.cores = 2 # big memmory footprint
+)
 Sys.time() - t0
 
 # histone marks -----------------
@@ -225,7 +225,7 @@ his_md <- left_join(
 # png for apps ---------------
 plotBetterHisModDataForLine <- function(i, npix_height = 600) {
 
-    hisModData <- prepareHisModData(i, tssAnno = tss_table, metadataTable = his_md, expressionTable = roadmapExp) %>%
+    hisModData <- prepareHisModData(i, tssAnno = tss_table, metadataTable = his_md, expressionTable = salmonExp) %>%
         addGeneTypeInfo(refTable)
 
     hisModName <- his_md[i, ]$ChIP
@@ -339,7 +339,7 @@ tes_table <- mutate(
 # png for apps ---------------
 plotBetterHisModDataTesForLine <- function(i, npix_height = 600) {
 
-    hisModData <- prepareHisModData(i, tssAnno = tes_table, metadataTable = his_md, expressionTable = roadmapExp) %>%
+    hisModData <- prepareHisModData(i, tssAnno = tes_table, metadataTable = his_md, expressionTable = salmonExp) %>%
         addGeneTypeInfo(refTable)
 
     hisModName <- his_md[i, ]$ChIP
