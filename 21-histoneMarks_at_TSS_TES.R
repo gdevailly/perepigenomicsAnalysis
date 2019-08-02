@@ -39,7 +39,7 @@ hisFiles <- bind_cols(
     strsplit(hisFiles$name, "-") %>%
         map_df(~data_frame(cellCode = .x[1], ChIP = .x[2]))
 )
-
+hisFiles <- filter(hisFiles, cellCode %in% colnames(salmonExp))
 tss_table <- read_tsv(myProms, col_names = FALSE, progress = FALSE)
 colnames(tss_table) <- c("chr", "start", "end", "name", "score", "strand")
 
@@ -62,6 +62,8 @@ DNAse_md <- inner_join(
         dplyr::select(-name, -ChIP),
     by = "cellCode"
 ) %>% dplyr::rename(DNAse_file = file.x, Control_file = file.y)
+
+DNAse_md <- filter(DNAse_md, cellCode %in% colnames(salmonExp))
 
 # very unpure function, just for looping actually -------------------
 # png versions
@@ -231,17 +233,17 @@ plotBetterHisModDataForLine <- function(i, npix_height = 600) {
     hisModName <- his_md[i, ]$ChIP
     cellID <-  his_md[i, ]$cellCode
 
-    if(!file.exists(paste0("../appPlots/tss/", hisModName))) {
-        dir.create(paste0("../appPlots/tss/", hisModName))
+    if(!file.exists(paste0(preffix, "appPlots/tss/", hisModName))) {
+        dir.create(paste0(preffix, "appPlots/tss/", hisModName))
     }
 
     for(j in adundant_gene_types) {
-        if(!file.exists(paste0("../appPlots/tss/", hisModName, "/", j))) {
-            dir.create(paste0("../appPlots/tss/", hisModName, "/", j))
+        if(!file.exists(paste0(preffix, "appPlots/tss/", hisModName, "/", j))) {
+            dir.create(paste0(preffix, "appPlots/tss/", hisModName, "/", j))
         }
         png(
             file = paste0(
-                "../appPlots/tss/", hisModName, "/", j, "/", cellID, ".png"
+                preffix, "appPlots/tss/", hisModName, "/", j, "/", cellID, ".png"
             ),
             width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
@@ -265,13 +267,13 @@ plotBetterHisModDataForLine <- function(i, npix_height = 600) {
     geneType[which(grepl("RNA", hisModData$gene_type, fixed = TRUE))] <- "RNA gene"
     hisModData$gene_type <- geneType
 
-    if(!file.exists(paste0("../appPlots/tss/", hisModName, "/all/"))) {
-        dir.create(paste0("../appPlots/tss/", hisModName, "/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tss/", hisModName, "/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tss/", hisModName, "/all/"))
     }
 
     png(
         file = paste0(
-            "../appPlots/tss/", hisModName, "/all/", cellID, ".png"
+            preffix, "appPlots/tss/", hisModName, "/all/", cellID, ".png"
         ),
         width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -289,42 +291,24 @@ plotBetterHisModDataForLine <- function(i, npix_height = 600) {
     message(paste(his_md[i, ]$name, "is done!"))
 }
 
-t0 <- Sys.time() # 6h... c'est long
-mclapply(
-    seq_len(nrow(his_md)),
-    plotBetterHisModDataForLine,
-    mc.cores = 8 # big memmory footprint
-) %>% invisible()
-Sys.time() - t0
-
-# v test  viridis palette -------------------------------------
-t0 <- Sys.time()
-mclapply(
-    seq_len(nrow(his_md))[18], # 18 ?
-    function(i) {
-        hisMark <- his_md[i, ]$ChIP
-        cellID <-  his_md[i, ]$cellCode
-        if(!file.exists(paste0("../plots/profileHM/tss/", hisMark))){
-            dir.create(paste0("../plots/profileHM/tss/", hisMark))
-        }
-        pdf(
-            file = paste0(
-                "../plots/profileHM/tss/", hisMark, "/viridis2_",  hisMark, "_",
-                dplyr::filter(metadata, id == cellID)$id, "_", dplyr::filter(metadata, id == cellID)$short,
-                "_tss_profile.pdf"
-            ),
-            width = 5.3, height = 5.8
-        )
-        plotHisModDataForLine(i)
-        dev.off()
-    },
-    mc.cores = 8 # big memmory footprint
+t0 <- Sys.time() # 9h... c'est long
+dummy <- lapply(
+    137:242,
+    plotBetterHisModDataForLine
 )
 Sys.time() - t0
 
+t0 <- Sys.time() # 9h... c'est long
+dummy <- lapply(
+    seq_len(nrow(his_md)),
+    plotBetterHisModDataForLine
+)
+Sys.time() - t0
+
+
 # tes -----------------------------
 # histones tes ---------------------
-TES <- "../../annotationData/gencode.v24.annotation.hg19.middleTES.light.autosomes.bed"
+TES <- "~/mnt/genotoul_grp/guillaume/cascade/annotation/gencode.v29.annotation.hg19.middleTES.light.autosomes.bed"
 tes_table <- read_tsv(TES, col_names = FALSE, progress = FALSE)
 colnames(tes_table) <- c("chr", "start", "end", "name", "score", "strand")
 tes_table <- mutate(
@@ -345,17 +329,17 @@ plotBetterHisModDataTesForLine <- function(i, npix_height = 600) {
     hisModName <- his_md[i, ]$ChIP
     cellID <-  his_md[i, ]$cellCode
 
-    if(!file.exists(paste0("../appPlots/tes/", hisModName))) {
-        dir.create(paste0("../appPlots/tes/", hisModName))
+    if(!file.exists(paste0(preffix, "appPlots/tes/", hisModName))) {
+        dir.create(paste0(preffix, "appPlots/tes/", hisModName))
     }
 
     for(j in adundant_gene_types) {
-        if(!file.exists(paste0("../appPlots/tes/", hisModName, "/", j))) {
-            dir.create(paste0("../appPlots/tes/", hisModName, "/", j))
+        if(!file.exists(paste0(preffix, "appPlots/tes/", hisModName, "/", j))) {
+            dir.create(paste0(preffix, "appPlots/tes/", hisModName, "/", j))
         }
         png(
             file = paste0(
-                "../appPlots/tes/", hisModName, "/", j, "/", cellID, ".png"
+                preffix, "appPlots/tes/", hisModName, "/", j, "/", cellID, ".png"
             ),
             width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
@@ -380,13 +364,13 @@ plotBetterHisModDataTesForLine <- function(i, npix_height = 600) {
     geneType[which(grepl("RNA", hisModData$gene_type, fixed = TRUE))] <- "RNA gene"
     hisModData$gene_type <- geneType
 
-    if(!file.exists(paste0("../appPlots/tes/", hisModName, "/all/"))) {
-        dir.create(paste0("../appPlots/tes/", hisModName, "/all/"))
+    if(!file.exists(paste0(preffix, "appPlots/tes/", hisModName, "/all/"))) {
+        dir.create(paste0(preffix, "appPlots/tes/", hisModName, "/all/"))
     }
 
     png(
         file = paste0(
-            "../appPlots/tes/", hisModName, "/all/", cellID, ".png"
+            preffix, "appPlots/tes/", hisModName, "/all/", cellID, ".png"
         ),
         width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
@@ -402,15 +386,25 @@ plotBetterHisModDataTesForLine <- function(i, npix_height = 600) {
     )
     dev.off()
 
+    rm(hisModData)
+    gc()
+
     message(paste(his_md[i, ]$name, "is done!"))
 }
 
 t0 <- Sys.time() # 6h... c'est long
-mclapply(
+dummy <- lapply(
     seq_len(nrow(his_md)),
-    plotBetterHisModDataTesForLine,
-    mc.cores = 8 # big memmory footprint
-) %>% invisible()
+    plotBetterHisModDataTesForLine
+)
 Sys.time() - t0
 
+
+
+t0 <- Sys.time() # 6h... c'est long
+dummy <- lapply(
+    136:242,
+    plotBetterHisModDataTesForLine
+)
+Sys.time() - t0
 

@@ -1,6 +1,6 @@
 library(here)
 library(tidyverse)
-library(future.apply); plan(multiprocess(workers = 12))
+library(future.apply); # plan(multiprocess(workers = 4))
 
 relat <- read_tsv(here("data", "annotation", "relationship_exon_transcripts_genes_gencodev22_hg19.tsv"))
 load(here("data", "rnaseq", "salmon_quant_transcripts_genes.RData"))
@@ -78,3 +78,68 @@ write_tsv(bed, path = "data/inner_exon_psis.bed", col_names = FALSE)
 psis2 <- psis
 rownames(psis2) <- paste0("exon_id_", seq_len(nrow(psis2)))
 saveRDS(psis2, file = here("data", "Rdata", "innerExonPsi.rds"))
+
+# exon TPM ----------
+compute_epm <- function(line, relat, trans, genes) {
+    message(line)
+    my_gene <- relat$gene[line]
+    gene_tpms <- genes[my_gene, , drop = TRUE]
+    my_transcripts <- strsplit(relat$transcripts[line], split = ", ")[[1]]
+    my_transcripts <- my_transcripts[my_transcripts %in% rownames(trans)]
+    if(length(my_transcripts) == 0) return(rep(NA_real_, ncol(genes)))
+    tran_tpms <- colSums(trans[my_transcripts, , drop = FALSE])
+    tran_tpms
+}
+
+compute_epm(42, relat, trans = tpm_trans_med, genes = tpm_genes_med)
+
+t0 <- Sys.time() # 7 minutes, parallelisable
+epms <- lapply(
+    seq_len(nrow(relat)),
+    function(x) compute_epm(x, relat, trans = tpm_trans_med, genes = tpm_genes_med)
+) %>% do.call(rbind, .)
+Sys.time() - t0
+
+rownames(epms) <- relat$name
+tokeep <- apply(epms, 1, function(x) !any(is.na(x)))
+epms <- epms[tokeep, ]
+
+summary(as.vector(epms))
+
+p <- gather(as_tibble(epms), key = "celltype", value = "epm") %>%
+    ggplot(aes(x = epm)) +
+    geom_density() +
+    scale_x_log10() +
+    facet_wrap(~celltype) +
+    theme_bw()
+ggsave("plots/epm_densities.png", p)
+
+p <- tibble(
+    exon = rownames(epms),
+    mean_epm = rowMeans(epms),
+    sd_epm = apply(epms, 1, sd)
+) %>%
+    ggplot(aes(x = sd_epm, y = mean_epm)) +
+    geom_point(alpha = 0.2, size = 0.5) +
+    geom_density2d(color = "magenta") +
+    scale_x_log10() + scale_y_log10() + annotation_logticks() +
+    labs(x = "s.d.", y = "mean", title = "Exon PSI, Roadmap Epigenomics dataset") +
+    theme_bw()
+
+ggsave("plots/epm_mean_var.png", p, width = 4, height = 3.5)
+
+bed <- tibble(
+    name = rownames(epms),
+    chr = strsplit(name, ":") %>% map_chr(first),
+    start =  strsplit(name, ":") %>% map_chr(2) %>% strsplit("-") %>% map_chr(first),
+    end   =  strsplit(name, ":") %>% map_chr(2) %>% strsplit("-") %>% map_chr(2) %>% strsplit(";") %>% map_chr(first),
+    strand = strsplit(name, ";") %>% map_chr(last),
+    score = 2
+) %>% select(chr, start, end, name, score, strand) %>%
+    mutate(name = paste0("exon_id_", seq_len(nrow(.))))
+
+write_tsv(bed, path = "data/inner_exon_epms.bed", col_names = FALSE)
+
+epms2 <- epms
+rownames(epms2) <- paste0("exon_id_", seq_len(nrow(epms2)))
+saveRDS(epms2, file = here("data", "Rdata", "innerExonEpm.rds"))

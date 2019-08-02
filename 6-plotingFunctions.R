@@ -69,7 +69,8 @@ extractAndPrepareDataFor <- function(roadmapCode, annotationPath, exprTable, ver
             "\ngenes common in both datasets:", nrow(combTable)
         ))
     }
-    combTable <- arrange(combTable, desc(exp))
+
+    combTable <- sample_frac(combTable, size = 1, replace = FALSE) %>% arrange(desc(exp))
     return(combTable)
 }
 
@@ -114,7 +115,7 @@ extractAndPrepareDataForExons <- function(roadmapCode, annotationPath, exonTable
             "\ngenes common in both datasets:", nrow(combTable)
         ))
     }
-    combTable <- arrange(combTable, desc(exp))
+    combTable <- sample_frac(combTable, size = 1, replace = FALSE) %>% arrange(desc(exp))
     return(combTable)
 }
 
