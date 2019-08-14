@@ -83,10 +83,11 @@ plotHisModDataForLine <- function(i) {
     message(paste(his_md[i, ]$name, "is done!"))
 }
 
-t0 <- Sys.time() # 6h20
+t0 <- Sys.time()
 lapply(
     seq_len(nrow(his_md)),
     function(i) {
+        gc()
         hisMark <- his_md[i, ]$ChIP
         cellID  <- his_md[i, ]$cellCode
         if(!file.exists(paste0(preffix, "appPlots/exons/", hisMark))){

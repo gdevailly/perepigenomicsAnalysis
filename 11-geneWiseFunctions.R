@@ -55,7 +55,7 @@ extractGeneWiseDataFor <- function(
 extractExonWiseDataFor <- function(
     geneName,
     dataList,
-    windows = 17:25 # middle 11 windows when windows go from 1 to 51
+    windows = 17:25 # middle 11 windows when windows go from 1 to 41
 ) {
     data_frame(
         cell_type = names(dataList),
