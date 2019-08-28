@@ -1,29 +1,28 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/wgbs/roadmap")
+setwd("~/mnt/genotoul_grp/guillaume/cascade")
 
-source("../../../Rscripts/6-plotingFunctions.R")
-source("../../../Rscripts/11-geneWiseFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
 
 library(readr)
 library(parallel)
 
 # metadata building
-metadata <- read_tsv("EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
-myProms <- "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"
-roadmapExp <- list(
-    pc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.pc"),
-    nc = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.nc"),
-    rb = read_tsv("../../../../otherProject/ChIP_heatmap/data/roadmap/57epigenomes.RPKM.rb")
-)
-roadmapExp <- do.call(rbind, roadmapExp)
+
+myProms <- "annotation/gencode.v29.annotation.hg19.middleTES.light.autosomes.bed"
+salmonExp <- read_tsv("data/rnaseq/salmon_exp_genes_expressed.tsv")
+
 refTable <- read_tsv(
-    "../../../../annotationData/gencode.v24.annotation.hg19.middleTSStranscript.bed",
+    "annotation/gencode.v29.annotation.hg19.middleTSStranscript.bed",
     col_names = FALSE
 )
 colnames(refTable) <- c("chr", "start", "end", "gene_id", "score", "strand", "gene_type", "symbol")
 refTable$gene_id <-  sub("\\.[0-9]*", "", refTable$gene_id)
-metadata$id[!metadata$id %in% colnames(roadmapExp)] # missing E008, E017, E021, E022, check newer data?
-metadata <- filter(metadata, id %in% colnames(roadmapExp))
+refTable <- filter(refTable, chr %in% paste0("chr", 1:22))
+refTable <- filter(refTable, gene_id %in% salmonExp$gene_id)
+metadata$id[!metadata$id %in% colnames(salmonExp)] # missing E008, E017, E021, E022, "E024" "E053" "E054" "E058" "E070" "E071"
+metadata <- filter(metadata, id %in% colnames(salmonExp))
 
 t0 <- Sys.time()
 dataForAllSamples <- mclapply(
@@ -32,7 +31,7 @@ dataForAllSamples <- mclapply(
         dataForPlot <- extractAndPrepareDataFor(
             metadata$id[i],
             myProms,
-            roadmapExp,
+            salmonExp,
             refgenome = "hg19",
             bin = 100L,
             rm0 = TRUE,
@@ -44,22 +43,22 @@ dataForAllSamples <- mclapply(
         message(paste(metadata$id[i], "done!"))
         return(dataForPlot)
     },
-    mc.cores = 33, mc.preschedule = FALSE
+    mc.cores = 6, mc.preschedule = FALSE
 )
 Sys.time() - t0 # 2 minutes
 names(dataForAllSamples) <- metadata$short
 
 # gene extraction
 
-# t0 <- Sys.time()
-# geneWiseData <- mclapply(
-#     dataForAllSamples[[1]]$gene_id,
-#     function(x) extractGeneWiseDataFor(x, dataForAllSamples),
-#     mc.cores = 32
-# )
-# Sys.time() - t0 # long, ~1h15
-# names(geneWiseData) <- dataForAllSamples[[1]]$gene_id
-# save(geneWiseData, file = "../../Rdata/geneWiseData_tes_cascade.RData")
+t0 <- Sys.time()
+geneWiseData <- mclapply(
+    dataForAllSamples[[1]]$gene_id,
+    function(x) extractGeneWiseDataFor(x, dataForAllSamples),
+    mc.cores = 14
+)
+Sys.time() - t0 # long, ~1h15
+names(geneWiseData) <- dataForAllSamples[[1]]$gene_id
+save(geneWiseData, file = "~/mnt/genotoul/work/projects/cascade/Rdata/geneWiseData_tes_cascade.RData")
 load("../../Rdata/geneWiseData_tes_cascade.RData")
 
 n <- 33

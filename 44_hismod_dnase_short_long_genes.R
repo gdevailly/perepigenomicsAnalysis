@@ -322,3 +322,10 @@ dummy <- lapply(
 )
 Sys.time() - t0
 
+t0 <- Sys.time() # 6h... c'est long
+dummy <- lapply(
+    140:242,
+    plotBetterHisModDataTesForLine
+)
+Sys.time() - t0
+
