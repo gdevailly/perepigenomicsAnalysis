@@ -1,6 +1,7 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/")
-source("../Rscripts/6-plotingFunctions.R")
-source("../Rscripts/11-geneWiseFunctions.R")
+setwd("~/mnt/genotoul_grp/guillaume/cascade")
+
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
 
 library(dplyr)
 library(plotrix)
@@ -9,17 +10,15 @@ library(readr)
 library(svglite)
 library(parallel)
 
-metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-load("Rdata/innerExonQuant.RData")
-load("Rdata/innerExonRatio.RData")
-
-metadata$id[!metadata$id %in% colnames(innerExonRatio)] # missing E008, E017, E021, E022
-metadata <- filter(metadata, id %in% colnames(innerExonRatio))
-
-exonInfo <- innerExonQuant[, c("chr", "start", "end", "exon_location", "score", "strand")]
-write.table(exonInfo, file = "inner_exon.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+psis <- readRDS("~/work/projects/cascade/data/Rdata/innerExonPsi.rds")
+exon_location <- rownames(psis)
+psis <- bind_cols(
+    tibble(exon_location = exon_location),
+    as_tibble(psis)
+)
 
 metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
 metadata <- filter(metadata, id %in% colnames(psis))
