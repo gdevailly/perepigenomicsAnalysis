@@ -142,6 +142,7 @@ DNAse_md <- inner_join(
         dplyr::select(-name, -ChIP),
     by = "cellCode"
 ) %>% dplyr::rename(DNAse_file = file.x, Control_file = file.y)
+DNAse_md <- filter(DNAse_md, cellCode %in% colnames(salmonExp))
 
 
 dataForDnase <- lapply(
@@ -165,7 +166,7 @@ Dnase <- mclapply(
 Sys.time() - t0
 names(Dnase) <- dataForDnase[[1]]$gene_id
 
-save(Dnase, file = "Rdata/geneWiseData_tss_Dnase.RData")
+save(Dnase, file = "~/mnt/genotoul/work/projects/cascade/Rdata/geneWiseData_tss_Dnase.RData")
 
 ## DNAse TES -----------
 t0 <- Sys.time() # 36 minutes
@@ -190,61 +191,4 @@ Dnase <- mclapply(
 Sys.time() - t0
 names(Dnase) <- dataForDnase[[1]]$gene_id
 
-save(Dnase, file = "Rdata/geneWiseData_tes_Dnase.RData")
-
-
-# ploting ------
-load("Rdata/geneWiseData_tss_Dnase.RData")
-
-t0 <- Sys.time()
-modelTable <- getLmAndSd_dnase(Dnase) # default is log10(exp + 1)
-Sys.time() - t0 # 9 minutes
-
-cvFilter <- function(x, thresholds = c(0.25, 0.5, 0.75), values = c(0.125, 0.375, 0.625, 0.875)) {
-    y <- rep(values[1], length(x))
-    for(i in seq_along(thresholds)) {
-        y[which(x > thresholds[i])] <- values[i + 1]
-    }
-    return(y)
-}
-
-myBoxplotFunc <- function(myTbl, myVarName, colour = "white") {
-    newTbl <- mutate(myTbl, bin = cvFilter(myTbl[, paste0("r2_", myVarName)][[1]]))
-    ylims <- sapply(unique(newTbl$bin), function(x) {
-        newTbl2 <- filter(newTbl, bin == x)
-        boxplot.stats(newTbl2[, paste0("sl_", myVarName)][[1]])$stats[c(1, 5)] * 1.05
-    })
-    ylims <- c(min(ylims[1,]), max(ylims[2,]))
-    eff <- table(newTbl$bin)
-    perc <- round(eff *100 / sum(eff), digits = 1)
-    ann <- paste0(eff, "\n(", perc,"%)")
-    return(ggplot(data = newTbl, aes_string("bin", paste0("sl_", myVarName), group = "bin")) +
-               geom_hline(yintercept = 0, linetype = 2) +
-               # geom_violin(colour = colour, fill = "lightgrey") +
-               geom_boxplot(colour = colour, fill = "NA", outlier.shape = NA) +
-               coord_cartesian(ylim = ylims) +
-               labs(title = myVarName, x = bquote(R^2), y = "Slope") +
-               annotate("text", x = unique(newTbl$bin), y = ylims[1], label = ann, vjust = 0))
-}
-
-save_plot("../plots/slopes_tss_allGenes_dnase_v2.pdf", base_height = 4, base_width = 7,
-          ggdraw() +
-              draw_plot(myBoxplotFunc(modelTable, "dnase", "black"), 0,    0, 0.5, 0.95) +
-              draw_plot(myBoxplotFunc(modelTable, "control"  , "grey"), 0.5, 0, 0.5, 0.95) +
-              draw_label("All genes, regression analysis", x = 0.5, y = 0.975)
-)
-
-save_plot("../plots/slopes_tss_allGenes_dnase_v2.pdf", base_height = 4, base_width = 7,
-          ggdraw() +
-              draw_plot(myBoxplotFunc(modelTable2, "dnase", "black"), 0,    0, 0.5, 0.95) +
-              draw_plot(myBoxplotFunc(modelTable2, "control"  , "grey"), 0.5, 0, 0.5, 0.95) +
-              draw_label("All genes, regression analysis", x = 0.5, y = 0.975)
-)
-
-
-t0 <- Sys.time()
-ggdraw() +
-    draw_plot(myBoxplotFunc(modelTable, "dnase", "black"), 0,    0, 0.5, 0.95) +
-    draw_plot(myBoxplotFunc(modelTable, "control"  , "grey"), 0.5, 0, 0.5, 0.95) +
-    draw_label("All genes, regression analysis", x = 0.5, y = 0.975)
-Sys.time() - t0
+save(Dnase, file = "~/mnt/genotoul/work/projects/cascade/Rdata/geneWiseData_tes_Dnase.RData")
