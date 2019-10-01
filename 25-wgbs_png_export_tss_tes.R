@@ -35,12 +35,12 @@ metadata <- filter(metadata, id %in% colnames(salmonExp))
 #     dplyr::select(gene_type) %>%
 #     unlist %>%
 #     unname
-# adundant_gene_types <- adundant_gene_types[-12] # TEC genes are mostly absent from data
+# minus TEC, TEC genes are mostly absent from data
 
 adundant_gene_types <- c(
-    "protein_coding", "processed_pseudogene", "lincRNA", "antisense", "unprocessed_pseudogene",
-     "misc_RNA",  "miRNA", "sense_intronic", "transcribed_unprocessed_pseudogene", "snRNA", "snoRNA",
-     "processed_transcript",  "transcribed_processed_pseudogene", "rRNA_pseudogene", "other"
+    "protein_coding", "processed_pseudogene", "lincRNA", "antisense",
+    "snRNA", "unprocessed_pseudogene", "misc_RNA", "miRNA", "snoRNA",
+    "transcribed_unprocessed_pseudogene", "other"
 )
 refTable$gene_type <- if_else(refTable$gene_type %in% adundant_gene_types, refTable$gene_type, "other")
 

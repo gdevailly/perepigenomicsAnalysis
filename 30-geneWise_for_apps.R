@@ -21,11 +21,11 @@ Sys.time() - t0
 byFeatureMd <- tibble(
     file = list.files(),
     feature = case_when(
-        grepl("exonFpkm" , file, fixed = TRUE) ~ "exonFpkm",
+        grepl("exonFpkm" , file, fixed = TRUE) ~ "exonTpm",
         grepl("exonPsi" , file, fixed = TRUE) ~ "exonPsi",
         grepl("_tes_", file, fixed = TRUE) ~ "TTS",
         grepl("_tss_", file, fixed = TRUE) ~ "TSS",
-        grepl("exonWiseData_cascade.RData", file, fixed = TRUE) ~ "exonFpkm",
+        grepl("exonWiseData_cascade.RData", file, fixed = TRUE) ~ "exonTpm",
         TRUE ~ NA_character_
     ),
     assay = case_when(

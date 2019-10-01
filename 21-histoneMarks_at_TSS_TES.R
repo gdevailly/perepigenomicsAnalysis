@@ -24,6 +24,7 @@ refTable <- read_tsv(
 colnames(refTable) <- c("chr", "start", "end", "gene_id", "score", "strand", "gene_type", "symbol")
 refTable$gene_id <-  sub("\\.[0-9]*", "", refTable$gene_id)
 refTable <- filter(refTable, chr %in% paste0("chr", 1:22))
+refTable <- filter(refTable, gene_id %in% salmonExp$gene_id)
 
 metadata$id[!metadata$id %in% colnames(salmonExp)] # missing E008, E017, E021, E022, and more
 metadata <- dplyr::filter(metadata, id %in% colnames(salmonExp))
@@ -43,10 +44,11 @@ hisFiles <- filter(hisFiles, cellCode %in% colnames(salmonExp))
 tss_table <- read_tsv(myProms, col_names = FALSE, progress = FALSE)
 colnames(tss_table) <- c("chr", "start", "end", "name", "score", "strand")
 
+# cf script 25-wgbs_png_export_tss_tes.R for why this list of gene types
 adundant_gene_types <- c(
     "protein_coding", "processed_pseudogene", "lincRNA", "antisense",
     "snRNA", "unprocessed_pseudogene", "misc_RNA", "miRNA", "snoRNA",
-    "rRNA", "transcribed_unprocessed_pseudogene", "other"
+    "transcribed_unprocessed_pseudogene", "other"
 )
 refTable$gene_type <- if_else(refTable$gene_type %in% adundant_gene_types, refTable$gene_type, "other")
 

@@ -2,6 +2,9 @@
 ### SET WORKING DIRECTORY ###
 #############################
 
+setwd("~/work/projects/cascade/perepigenomics/")
+
+
 library(tidyverse)
 available_png <- read_tsv("data/availablePng.tsv")
 my_dictionary <- read_tsv("data/dictionary.tsv")

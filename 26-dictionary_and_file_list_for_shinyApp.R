@@ -1,5 +1,4 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/")
-setwd("~/mnt/joshi_grp2/cascade")
+setwd("~/work/projects/cascade/")
 
 library(tidyverse)
 
@@ -10,8 +9,8 @@ availablePng <- strsplit(availablePng, "/", fixed = TRUE) %>%
         assay = .x[2],
         gene_type = if_else(feature == "exons", NA_character_, .x[3]),
         metric = case_when(
-            feature != "exons" ~ "gene FPKM",
-            .x[3] == "byFpkm"  ~ "middle exons FPKM",
+            feature != "exons" ~ "gene TPM",
+            .x[3] == "byTpm"  ~ "middle exons TPM",
             .x[3] == "byPsi"   ~ "middle exons inclusion ratio",
             TRUE               ~ NA_character_
         ),
@@ -19,9 +18,9 @@ availablePng <- strsplit(availablePng, "/", fixed = TRUE) %>%
     ))
 
 availablePng <- mutate(availablePng, feature_metric = case_when(
-    feature == "tss" & metric == "gene FPKM" ~ "Transcription Start Sites (by gene FPKM)",
-    feature == "tes" & metric == "gene FPKM" ~ "Transcription Termination Sites (by gene FPKM)",
-    feature == "exons" & metric == "middle exons FPKM" ~ "Middle Exons (by exons FPKM)",
+    feature == "tss" & metric == "gene TPM" ~ "Transcription Start Sites (by gene TPM)",
+    feature == "tes" & metric == "gene TPM" ~ "Transcription Termination Sites (by gene TPM)",
+    feature == "exons" & metric == "middle exons TPM" ~ "Middle Exons (by exon TPM)",
     feature == "exons" & metric == "middle exons inclusion ratio" ~ "Middle Exons (by inclusion ratio)",
     TRUE ~ NA_character_
 ))
@@ -37,7 +36,8 @@ myDictionary <- c(
     wgbs = "WGBS",
     TSS = "Transcription Start Sites",
     TTS = "Transcription Termination Sites",
-    exonFpkm = "Middle exons (by expression)",
+    TES = "Transcription End Sites",
+    exonTpm = "Middle exons (by expression)",
     exonPsi = "Middle exons (by inclusion ratio)",
     short = "Short genes (<=1kb)",
     intermediate = "Genes between 1kb and 3kb long",

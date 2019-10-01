@@ -1,13 +1,13 @@
 library(here)
 library(tidyverse)
-library(furrr); plan(multiprocess(workers = 12))
+library(furrr); plan(multiprocess(workers = 8))
 
-source(here("Rscripts", "11-geneWiseFunctions.R"))
-source(here("Rscripts", "29-geneWiseFunctions_hisMods.R"))
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/29-geneWiseFunctions_hisMods.R")
 
 byFeatureMd <- read_tsv(here("perepigenomics", "data", "availableByFeature.tsv"))
 
-t0 <- Sys.time() # 41 minutes
+t0 <- Sys.time() # 53 minutes
 future_map_chr(
     seq_len(nrow(byFeatureMd)),
     function(i) {
