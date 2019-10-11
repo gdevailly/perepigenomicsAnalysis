@@ -100,13 +100,13 @@ prepareDNAseDataExons <- function(myCellCode, annoTable, metadataTable, metricTa
     signalDf <- data.frame(
         gene_id = rownames(signalMat),
         signalMat
-    ) %>% as_data_frame %>%
+    ) %>% as_tibble %>%
         mutate(gene_id = sub("\\.[0-9]*", "", gene_id))
     colnames(signalDf) <- c("name", paste0("DNAse", colnames(signalDf)[-1]))
     controlDf <- data.frame(
         gene_id = rownames(controlMat),
         controlMat
-    ) %>% as_data_frame %>%
+    ) %>% as_tibble %>%
         mutate(gene_id = sub("\\.[0-9]*", "", gene_id))
     colnames(controlDf) <- c("name", paste0("Control", colnames(controlDf)[-1]))
 

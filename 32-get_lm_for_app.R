@@ -1,6 +1,6 @@
 library(here)
 library(tidyverse)
-library(furrr); plan(multiprocess(workers = 8))
+library(furrr); plan(multiprocess(workers = 12))
 
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/29-geneWiseFunctions_hisMods.R")

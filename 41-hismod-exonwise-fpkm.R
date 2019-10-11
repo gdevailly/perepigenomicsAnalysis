@@ -1,9 +1,9 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/")
+setwd("/media/gdevailly/SANS TITRE/inra/cascade")
 
-source("../Rscripts/6-plotingFunctions.R")
-source("../Rscripts/11-geneWiseFunctions.R")
-source("../Rscripts/20-functions_for_histoneMarks.R")
-source("../Rscripts/29-geneWiseFunctions_hisMods.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/29-geneWiseFunctions_hisMods.R")
 
 library(readr)
 library(parallel)
@@ -13,19 +13,23 @@ library(purrr)
 metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-load("Rdata/innerExonQuant.RData")
-innerExonQuant$name <- innerExonQuant$exon_location
+epms <- read_rds("~/work/projects/cascade/data/Rdata/innerExonEpm.rds")
 
+metadata$id[!metadata$id %in% colnames(epms)] # missing E008, E017, E021, E022
+metadata <- filter(metadata, id %in% colnames(epms))
 
-metadata$id[!metadata$id %in% colnames(innerExonQuant)] # missing "E008" "E017" "E021" "E022"
-metadata <- filter(metadata, id %in% colnames(innerExonQuant))
+epms <- as.data.frame(epms)
+epms$exon_location <- rownames(epms)
+epms$name <- epms$exon_location
 
-exonInfoPath <- "inner_exon.bed"
+exonInfoPath <- "~/work/projects/cascade/data/inner_exon_epms.bed"
 exonTable <- read_tsv(exonInfoPath, col_names = FALSE, progress = FALSE)
 colnames(exonTable) <- c("chr", "start", "end", "name", "score", "strand")
 
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
+
 # histone ------------
-hisFiles <- data_frame(
+hisFiles <- tibble(
     file = list.files("histone/") %>%
         grep(".gz$", ., value = TRUE),
     name = gsub(".tagAlign.gz", "", file, fixed = TRUE)
@@ -42,7 +46,7 @@ his_md <- left_join(
         dplyr::rename(input_file = file),
     by = "cellCode"
 )
-his_md <- filter(his_md, cellCode %in%  colnames(innerExonQuant))
+his_md <- filter(his_md, cellCode %in%  colnames(epms))
 
 myHisMods <- names(table(his_md$ChIP)[table(his_md$ChIP) > 1])
 
@@ -52,29 +56,30 @@ preparDataFor <- function(thisHisMod) { # unpure
 
     mdForThisHisMod <- dplyr::filter(his_md, ChIP == thisHisMod)
 
-    dataForThisHisMod <- mclapply(
+    dataForThisHisMod <- lapply(
         seq_len(nrow(mdForThisHisMod)),
         function(i) {
             hisModData <- prepareHisModDataExons(
-                i, annoTable = exonTable, metadataTable = mdForThisHisMod, metricTable = innerExonQuant
+                i, annoTable = exonTable, metadataTable = mdForThisHisMod, metricTable = epms,
+                up = 1000, down = 1000, freq = 50
             )
             message(paste(mdForThisHisMod$name[i], "done!"))
             return(hisModData)
-        },
-        mc.cores = 12
+        }
     )
     names(dataForThisHisMod) <- mdForThisHisMod$name
     dataForThisHisMod <- map(dataForThisHisMod, ~dplyr::rename(.x, gene_id = name))
 
     geneWiseData <- mclapply(
         dataForThisHisMod[[1]]$gene_id,
-        function(x) extractGeneWiseDataForHistone(x, dataForThisHisMod),
-        mc.cores = 24
+        function(x) extractGeneWiseDataForHistone(x, dataForThisHisMod, windows = c("X.100", "X.50", "X0", "X50", "X100")),
+        mc.cores = 14
     )
     names(geneWiseData) <- dataForThisHisMod[[1]]$gene_id
 
     assign(thisHisMod, geneWiseData)
-    save(list = thisHisMod, file = paste0("Rdata/geneWiseData_exonFpkm_", thisHisMod, ".RData"))
+    save(list = thisHisMod, file = paste0(preffix, "Rdata/geneWiseData_exonTpm_", thisHisMod, ".RData"))
+    message(paste(thisHisMod, " done!"))
 
     return(NULL)
 }
@@ -92,25 +97,28 @@ DNAse_md <- inner_join(
     by = "cellCode"
 ) %>% dplyr::rename(DNAse_file = file.x, Control_file = file.y)
 
-dataForDnase <- mclapply(
+t0 <- Sys.time()
+dataForDnase <- lapply(
     DNAse_md$cellCode,
     function(cellCode) {
-        dnaseData <- prepareDNAseDataExons(cellCode, annoTable = exonTable, metadataTable = DNAse_md, metricTable = innerExonQuant)
+        dnaseData <- prepareDNAseDataExons(cellCode, annoTable = exonTable, metadataTable = DNAse_md, metricTable = epms,
+                                           up = 1000, down = 1000, freq = 50)
         message(paste(cellCode, "done!"))
         return(dnaseData)
-    },
-    mc.cores = 14
+    }
 )
+Sys.time() - t0
+
 names(dataForDnase) <- DNAse_md$cellCode
 dataForDnase <- map(dataForDnase, ~dplyr::rename(.x, gene_id = name))
 
 t0 <- Sys.time()
 Dnase <- mclapply(
     dataForDnase[[1]]$gene_id,
-    function(x) extractGeneWiseDataForDnase(x, dataForDnase),
-    mc.cores = 24
+    function(x) extractGeneWiseDataForDnase(x, dataForDnase, windows = c("X.100", "X.50", "X0", "X50", "X100")),
+    mc.cores = 12
 )
 Sys.time() - t0
 names(Dnase) <- dataForDnase[[1]]$gene_id
 
-save(Dnase, file = "Rdata/geneWiseData_exonFpkm_Dnase.RData")
+save(Dnase, file = paste0(preffix, "Rdata/geneWiseData_exonTpm_Dnase.RData"))

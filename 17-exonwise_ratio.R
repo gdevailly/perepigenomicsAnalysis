@@ -20,63 +20,24 @@ psis <- bind_cols(
     as_tibble(psis)
 )
 
+epms <- read_rds("~/work/projects/cascade/data/Rdata/innerExonEpm.rds")
+epms <- as.data.frame(epms)
+epms$exon_location <- rownames(epms)
+epms$name <- epms$exon_location
+
 metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
 metadata <- filter(metadata, id %in% colnames(psis))
 
 setwd("wgbs/roadmap")
 
-exonInfoPath <- "../../inner_exon.bed"
+exonInfoPath <- "~/work/projects/cascade/data/inner_exon_epms.bed"
+exonTable <- read_tsv(exonInfoPath, col_names = FALSE, progress = FALSE)
+colnames(exonTable) <- c("chr", "start", "end", "name", "score", "strand")
 
-t0 <- Sys.time()
-dataForAllSamples <- mclapply(
-    seq_len(nrow(metadata)),
-    function(i) {
-        dataForPlot <- extractAndPrepareDataForExons(
-            metadata$id[i],
-            exonInfoPath,
-            innerExonRatio, # <- to check !!! -> seems find to me...
-            refgenome = "hg19",
-            bin = 50L,
-            rm0 = TRUE,
-            xmin = 1000L, xmax = 1000L, type = "mf",
-            add_heatmap = TRUE,
-            verbose = FALSE
-        )
-        # dataForPlot <- addGeneTypeInfo(dataForPlot, refTable)
-        message(paste(metadata$id[i], "done!"))
-        return(dataForPlot)
-    },
-    mc.cores = 33, mc.preschedule = FALSE
-)
-Sys.time() - t0 # 2 minutes
-names(dataForAllSamples) <- metadata$short
-
-# t0 <- Sys.time()
-# exonWiseData <- mclapply(
-#     dataForAllSamples[[1]]$exon_location,
-#     function(x) extractExonWiseDataFor(x, dataForAllSamples, windows = 19:23), # 18:23 -> -100 +100 bp
-#     mc.cores = 32
-# )
-# Sys.time() - t0 # long, 45 minutes
-# names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
-# save(exonWiseData, file = "../../Rdata/exonWiseData_cascade.RData")
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
 
 
 # psis ---------------
-metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
-colnames(metadata) <- c("id", "short", "name")
-
-psis <- readRDS("Rdata/innerExonPsi.rds")
-exon_location <- rownames(psis)
-psis <- bind_cols(
-    data_frame(name = exon_location),
-    as_data_frame(psis)
-)
-psis <- dplyr::rename(psis, exon_location = name)
-
-metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
-metadata <- filter(metadata, id %in% colnames(psis))
-
 setwd("wgbs/roadmap")
 exonInfoPath <- "../../inner_exon_psis.bed"
 
@@ -113,6 +74,43 @@ exonWiseData <- mclapply(
 Sys.time() - t0 # long, 45 minutes
 names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
 save(exonWiseData, file = "../../Rdata/geneWiseData_exonPsi_wgbs.RData")
+
+
+# EPMS------
+
+t0 <- Sys.time()
+dataForAllSamples <- mclapply(
+    seq_len(nrow(metadata)),
+    function(i) {
+        dataForPlot <- extractAndPrepareDataForExons(
+            metadata$id[i],
+            exonInfoPath,
+            epms,
+            refgenome = "hg19",
+            bin = 50L,
+            rm0 = TRUE,
+            xmin = 1000L, xmax = 1000L, type = "mf",
+            add_heatmap = TRUE,
+            verbose = FALSE
+        )
+
+        message(paste(metadata$id[i], "done!"))
+        return(dataForPlot)
+    },
+    mc.cores = 4, mc.preschedule = FALSE
+)
+Sys.time() - t0 # 2 minutes
+names(dataForAllSamples) <- metadata$short
+
+t0 <- Sys.time()
+exonWiseData <- mclapply(
+    dataForAllSamples[[1]]$exon_location,
+    function(x) extractExonWiseDataFor(x, dataForAllSamples, windows = 19:23), # 19:23 -> -100 +100 bp
+    mc.cores = 12
+)
+Sys.time() - t0 # long, 45 minutes
+names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
+save(exonWiseData, file = paste0(preffix, "Rdata/geneWiseData_exonTpm_wgbs.RData"))
 
 
 # ------------
