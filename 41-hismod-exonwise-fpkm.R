@@ -84,7 +84,7 @@ preparDataFor <- function(thisHisMod) { # unpure
     return(NULL)
 }
 
-t0 <- Sys.time() # 15 h
+t0 <- Sys.time() # 11 h
 walk(myHisMods, preparDataFor)
 Sys.time() - t0
 
