@@ -71,10 +71,3 @@ write.table(
 
 
 
-
-
-
-# tests -----------
-filter(transcript, gene_id == "ENSG00000049249.8")
-filter(exon, gene_id == "ENSG00000049249.8") %>% select(transcript_id, everything()) %>% print(n = 20)
-
