@@ -339,7 +339,7 @@ p <- stat_data %>%
     mutate(term = factor(term, levels = c("DNAme", "H3K4me1", "H3K4me3", "H3K9me3", "H3K27me3", "H3K36me3"))) %>%
     ggplot(aes(x = term, fill = slope)) +
     geom_bar(position = position_dodge()) +
-    labs(x = "Mark", y = "Number of exons", fill = "Slope:", title = "Linear regression between middle exon Psi\nand epigenetic mark at middle exon") +
+    labs(x = "Mark", y = "Number of exons", fill = "Slope:", title = "Linear regression between middle exon TPM\nand epigenetic mark at middle exon") +
     scale_fill_viridis_d(begin = 0.2, end = 0.8, option = "cividis") +
     coord_cartesian(ylim = c(0, 1000)) +
     theme_bw(base_size = 16) +
