@@ -47,7 +47,7 @@ library(tidyverse)
 library(furrr); plan(multiprocess(workers = availableCores() - 2))
 library(parallel)
 
-load(here("data/full_model_tss.RData"))
+load("data/full_model_tss.RData")
 
 layout(rbind(1, 2))
 as.matrix(select(table_data[[1]], -cell_type)) %>%
@@ -192,8 +192,8 @@ p <- stat_data %>%
     filter(gene %in% long) %>%
     filter(term != "intercept") %>% # TODO : ask Yann how to interpret intercept
     mutate(slope = case_when(
-        p.value <= 0.01 & statistic > 0 ~ "Positive",
-        p.value <= 0.01 & statistic < 0 ~ "Negative",
+        p.value <= 0.01 & estimate > 0 ~ "Positive",
+        p.value <= 0.01 & estimate < 0 ~ "Negative",
         p.value >  0.01                 ~ "N.S."      ,
         TRUE                            ~ "N.D."
     )) %>%
@@ -222,7 +222,8 @@ loadData <- function(md, what = "TSS", path = "perepigenomics/data/Rdata/") {
     files <- filter(md, feature == what)$file %>%
         set_names(filter(md, feature == what)$assay)
     ret <- furrr::future_map(seq_along(files), function(x) {
-        load(here(path, files[x]))
+
+        load(paste0(path, files[x]))
         byFeatureData
     })
     set_names(ret, names(files))
@@ -340,7 +341,6 @@ p <- stat_data %>%
 ggsave(p, filename = "plots/global_lm_6marks_tts_long_only.png", width = 7, height = 5)
 
 # exon fpkm & Psi ---------------------
-# TTS -----------------
 library(here)
 library(tidyverse)
 library(furrr); plan(multiprocess(workers = availableCores() - 2))
@@ -348,18 +348,18 @@ library(parallel)
 
 metadata <- read_tsv("perepigenomics/data/availableByFeature.tsv")
 
-loadData <- function(md, what = "TSS", path = "perepigenomics/data/Rdata/") {
-    files <- filter(md, feature == what)$file %>%
-        set_names(filter(md, feature == what)$assay)
+loadData <- function(md, what = "TSS", path = "perepigenomics_app-master/data/Rdata/") {
+    files <- dplyr::filter(md, feature == what)$file %>%
+        set_names(dplyr::filter(md, feature == what)$assay)
     ret <- furrr::future_map(seq_along(files), function(x) {
-        load(here(path, files[x]))
+        load(paste0(path, files[x]))
         byFeatureData
     })
     set_names(ret, names(files))
 }
 
 t0 <- Sys.time() # 17s
-#exon <- loadData(metadata, what = "exonFpkm")
+# exon <- loadData(metadata, what = "exonTpm")
 exon <- loadData(metadata, what = "exonPsi")
 Sys.time() - t0
 
@@ -372,6 +372,7 @@ table_data <- mclapply(
         gene_data <- map(exon, i)
         if(names(gene_data)[1] != "WGBS") {
             gene_data <- c(gene_data[length(gene_data)], gene_data[seq(1, length(gene_data) - 1)])
+            # gene_data[[1]]$cell_type <- c("E003", "E004", "E005", "E006", "E007", "E011", "E012", "E013", "E016", "E050", "E065", "E066", "E079", "E084", "E085", "E094", "E095", "E096", "E097", "E098", "E100", "E104", "E105", "E106", "E109", "E112", "E113")
         }
         gene_data[[1]] <- select(gene_data[[1]], cell_type, exp, mCpG_ratio)
         for (j in seq(2, length(gene_data))) {
@@ -432,5 +433,5 @@ p <- stat_data %>%
     coord_cartesian(ylim = c(0, 1000)) +
     theme_bw(base_size = 16) +
     theme(axis.text.x = element_text(angle = 20, hjust = 0.8))
-# ggsave(p, filename = "plots/global_lm_6marks_exons_fpkm.png", width = 7, height = 5)
+# ggsave(p, filename = "plots/global_lm_6marks_exons_Tpm.png", width = 7, height = 5)
 ggsave(p, filename = "plots/global_lm_6marks_exons_Psi.png", width = 7, height = 5)

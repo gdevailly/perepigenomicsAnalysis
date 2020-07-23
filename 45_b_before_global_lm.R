@@ -13,11 +13,11 @@ wgbs_trs <- set_names(cell_dic$id, cell_dic$short)
 
 fe <- new.env()
 fe$rename_WGBS <- function(filename, trs) {
-    load(here("perepigenomics/data/Rdata/", filename))
+    load(here::here("perepigenomics/data/Rdata/", filename))
     byFeatureData <- map(byFeatureData, function(x) { # 30 s
-        mutate(x, cell_type = trs[cell_type])
+        dplyr::mutate(x, cell_type = trs[cell_type])
     })
-    save(byFeatureData, file = here("perepigenomics/data/Rdata/", filename))
+    save(byFeatureData, file = here::here("perepigenomics/data/Rdata/", filename))
     rm(byFeatureData)
     return(paste0(filename, " is done."))
 }
