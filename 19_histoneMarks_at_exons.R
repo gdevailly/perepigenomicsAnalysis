@@ -1,4 +1,4 @@
-setwd("/media/gdevailly/SANS TITRE/inra/cascade")
+setwd("/media/gdevailly/DDCRCL/inra/cascade")
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
 

@@ -1,5 +1,6 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/")
-source("../Rscripts/6-plotingFunctions.R")
+setwd("~/mnt/genotoul_grp/guillaume/cascade")
+
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
 
 library(dplyr)
 library(plotrix)
@@ -7,21 +8,20 @@ library(seqplots)
 library(readr)
 library(svglite)
 
-metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-psis <- readRDS("Rdata/innerExonPsi.rds")
+psis <- readRDS("~/work/projects/cascade/data/Rdata/innerExonPsi.rds")
 exon_location <- rownames(psis)
-psis <- bind_cols(
-    data_frame(exon_location = exon_location),
-    as_data_frame(psis)
-)
 
 metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
 metadata <- filter(metadata, id %in% colnames(psis))
 
-setwd("wgbs/roadmap")
-exonInfoPath <- "../../inner_exon_psis.bed"
+psis <- as.data.frame(psis)
+psis$exon_location <- rownames(psis)
+
+exonInfoPath <- "~/work/projects/cascade/data/inner_exon_psis.bed"
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
 
 # png plots ----------
 t0 <- Sys.time() # 10 minutes
@@ -50,7 +50,7 @@ for(i in seq_len(nrow(metadata))){
     zlims <- list(zlim1, c(0,1), c(1, 4), zlim4)
 
     png(
-        file = paste0("../../../appPlots/exons/wgbs/byPsi/", metadata$id[i], ".png"),
+        file = paste0(preffix, "appPlots/exons/wgbs/byPsi/", metadata$id[i], ".png"),
         width = 8.3, height = 5.8, units = "in", res = 300, pointsize = 13
     )
     plotMetricAndProfile(
@@ -66,7 +66,7 @@ for(i in seq_len(nrow(metadata))){
         exp.text = "Exon PSI",
         reversedZOrder = TRUE,
         abline.v = 1,
-        tints  = c("red"        , "blue"      , "purple"      , "sienna4"   )
+        tints  = c("red"        , "blue"      , "purple"      , "grey"   )
     )
     dev.off()
 

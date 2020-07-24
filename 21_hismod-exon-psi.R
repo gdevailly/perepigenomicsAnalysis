@@ -1,6 +1,6 @@
-setwd("/groups2/joshi_grp/guillaume/cascade/data/")
-source("../Rscripts/6-plotingFunctions.R")
-source("../Rscripts/20-functions_for_histoneMarks.R")
+setwd("/media/gdevailly/DDCRCL/inra/cascade")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
 
 library(readr)
 library(dplyr)
@@ -8,18 +8,19 @@ library(purrr)
 library(tidyr)
 library(parallel)
 
-metadata <- read_tsv("wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
+metadata <- read_tsv("~/mnt/genotoul_grp/guillaume/cascade/data/wgbs/roadmap/EG.mnemonics.name.txt", col_names = FALSE)
 colnames(metadata) <- c("id", "short", "name")
 
-psis <- readRDS("Rdata/innerExonPsi.rds")
-exon_location <- rownames(psis)
-psis <- bind_cols(
-    data_frame(name = exon_location),
-    as_data_frame(psis)
-)
+psis <- readRDS("~/work/projects/cascade/data/Rdata/innerExonPsi.rds")
 
 metadata$id[!metadata$id %in% colnames(psis)] # missing "E008" "E017" "E021" "E022" "E024" "E053" "E054" "E058" "E070" "E071"
 metadata <- filter(metadata, id %in% colnames(psis))
+
+psis <- as.data.frame(psis)
+psis$exon_location <- rownames(psis)
+
+exonInfoPath <- "~/work/projects/cascade/data/inner_exon_psis.bed"
+preffix <- "~/mnt/genotoul/work/projects/cascade/"
 
 # build histone marks table --------------
 hisFiles <- data_frame(
@@ -33,6 +34,8 @@ hisFiles <- bind_cols(
         map_df(~data_frame(cellCode = .x[1], ChIP = .x[2]))
 )
 
+hisFiles <- filter(hisFiles, cellCode %in% colnames(psis))
+
 his_md <- left_join(
     dplyr::filter(hisFiles, !ChIP %in% c("DNase", "DNaseControl", "Input")),
     dplyr::filter(hisFiles, ChIP == "Input") %>%
@@ -41,7 +44,6 @@ his_md <- left_join(
     by = "cellCode"
 )
 
-his_md <- filter(his_md, cellCode %in% metadata$id) # missing E024, E053, E054, E058, E070, E071
 
 # DNAseI -----------------------------
 DNAse_md <- inner_join(
@@ -53,10 +55,10 @@ DNAse_md <- inner_join(
 ) %>% dplyr::rename(DNAse_file = file.x, Control_file = file.y)
 
 
-# exon FPKM plot ------------------
-exonInfoPath <- "inner_exon_psis.bed"
+# exon Psi plot ------------------
 exonTable <- read_tsv(exonInfoPath, col_names = FALSE, progress = FALSE)
 colnames(exonTable) <- c("chr", "start", "end", "name", "score", "strand")
+psis <- dplyr::rename(psis, name = exon_location)
 
 # png versions -------------------
 plotHisModDataForLine <- function(i) {
@@ -88,25 +90,24 @@ plotHisModDataForLine <- function(i) {
 }
 
 t0 <- Sys.time() # 5.7h
-mclapply(
+lapply(
     seq_len(nrow(his_md)),
     function(i) {
         hisMark <- his_md[i, ]$ChIP
         cellID  <- his_md[i, ]$cellCode
-        if(!file.exists(paste0("../appPlots/exons/", hisMark, "/byPsi"))){
-            dir.create(paste0("../appPlots/exons/", hisMark, "/byPsi"))
+        if(!file.exists(paste0(preffix, "appPlots/exons/", hisMark, "/byPsi"))){
+            dir.create(paste0(preffix, "appPlots/exons/", hisMark, "/byPsi"))
         }
         png(
             file = paste0(
-                "../appPlots/exons/", hisMark, "/byPsi/", cellID, ".png"
+                preffix, "appPlots/exons/", hisMark, "/byPsi/", cellID, ".png"
             ),
             width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
         plotHisModDataForLine(i)
         dev.off()
-    },
-    mc.cores = 8 # big memmory footprint
-) %>% invisible()
+    } # big memory footprint
+)
 Sys.time() - t0
 
 
@@ -139,23 +140,22 @@ plotDNAseDataForLine <- function(i) {
 }
 
 t0 <- Sys.time() # 31 minutes
-mclapply(
+lapply(
     seq_len(nrow(DNAse_md)),
     function(i) {
         cellID <- DNAse_md$cellCode[i]
-        if(!file.exists(paste0("../appPlots/exons/dnase1"))){
-            dir.create(paste0("../appPlots/exons/dnase1"))
-            dir.create(paste0("../appPlots/exons/dnase1/byPsi"))
+        if(!file.exists(paste0(preffix, "appPlots/exons/dnase1/byPsi"))){
+            dir.create(paste0(preffix, "appPlots/exons/dnase1"))
+            dir.create(paste0(preffix, "appPlots/exons/dnase1/byPsi"))
         }
         png(
             file = paste0(
-                "../appPlots/exons/dnase1/byPsi/", cellID, ".png"
+                preffix, "appPlots/exons/dnase1/byPsi/", cellID, ".png"
             ),
             width = 5.3, height = 5.8, units = "in", res = 300, pointsize = 13
         )
         plotDNAseDataForLine(i)
         dev.off()
-    },
-    mc.cores = 7 # big memmory footprint
-) %>% invisible()
+    } # big memory footprint
+)
 Sys.time() - t0

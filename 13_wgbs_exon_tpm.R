@@ -66,7 +66,7 @@ for(i in seq_len(nrow(metadata))){
         expLim = c(0, 4),
         exp.text = "log10(TPM + 1)",
         reversedZOrder = TRUE,
-        tints  = c("red"        , "blue"      , "purple"      , "sienna4"   )
+        tints  = c("red"        , "blue"      , "purple"      , "grey"   )
     )
     dev.off()
 
