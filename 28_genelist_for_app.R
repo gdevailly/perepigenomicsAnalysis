@@ -1,8 +1,8 @@
 library(here)
 library(tidyverse)
 
-genes <- read_tsv(here("data", "annotation", "gencode.v24.annotation.hg19.middleTSS.bed"), col_names = FALSE)
-genes2 <- read_tsv(here("data", "annotation", "gencode.v24.annotation.hg19.middleTSStranscript.light.autosomes.bed"), col_names = FALSE)
+genes <- read_tsv(here("data", "annotation", "gencode.v29.annotation.hg19.middleTSS.bed"), col_names = FALSE)
+genes2 <- read_tsv(here("data", "annotation", "gencode.v29.annotation.hg19.middleTSStranscript.light.autosomes.bed"), col_names = FALSE)
 
 colnames(genes) <- c("chr", "tss", "tss+1", "ensg", "score", "strand", "gene_type", "symbol")
 table(genes$chr)

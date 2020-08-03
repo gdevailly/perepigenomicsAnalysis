@@ -21,7 +21,7 @@ Sys.time() - t0
 byFeatureMd <- tibble(
     file = list.files(),
     feature = case_when(
-        grepl("exonFpkm" , file, fixed = TRUE) ~ "exonTpm",
+        grepl("exonTpm" , file, fixed = TRUE) ~ "exonTpm",
         grepl("exonPsi" , file, fixed = TRUE) ~ "exonPsi",
         grepl("_tes_", file, fixed = TRUE) ~ "TTS",
         grepl("_tss_", file, fixed = TRUE) ~ "TSS",
@@ -31,6 +31,7 @@ byFeatureMd <- tibble(
     assay = case_when(
         grepl("_cascade.RData", file, fixed = TRUE) ~ "WGBS",
         file == "geneWiseData_exonPsi_wgbs.RData" ~ "WGBS",
+        file == "geneWiseData_exonTpm_wgbs.RData" ~ "WGBS",
         TRUE ~ strsplit(file, "_", fixed = TRUE) %>%
             map_chr(last) %>%
             sub(".RData", "", .)

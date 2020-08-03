@@ -38,13 +38,14 @@ preffix <- "~/mnt/genotoul/work/projects/cascade/"
 
 
 # psis ---------------
-setwd("wgbs/roadmap")
-exonInfoPath <- "../../inner_exon_psis.bed"
+setwd("data/wgbs/roadmap")
+exonInfoPath <- "~/work/projects/cascade/data/inner_exon_psis.bed"
 
 t0 <- Sys.time()
 dataForAllSamples <- mclapply(
     seq_len(nrow(metadata)),
     function(i) {
+        message(i)
         dataForPlot <- extractAndPrepareDataForExons(
             metadata$id[i],
             exonInfoPath,
@@ -60,20 +61,21 @@ dataForAllSamples <- mclapply(
         message(paste(metadata$id[i], "done!"))
         return(dataForPlot)
     },
-    mc.cores = 33, mc.preschedule = FALSE
+    mc.cores = 6, mc.preschedule = FALSE
 )
 Sys.time() - t0 # 2 minutes
-names(dataForAllSamples) <- metadata$short
+names(dataForAllSamples) <- metadata$id
 
 t0 <- Sys.time()
 exonWiseData <- mclapply(
     dataForAllSamples[[1]]$exon_location,
     function(x) extractExonWiseDataFor(x, dataForAllSamples, windows = 19:23), # 19:23 -> -100 +100 bp
-    mc.cores = 32
+    mc.cores = 14
 )
-Sys.time() - t0 # long, 45 minutes
+Sys.time() - t0 # long, 25 minutes
 names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
-save(exonWiseData, file = "../../Rdata/geneWiseData_exonPsi_wgbs.RData")
+byFeatureData <- exonWiseData
+save(byFeatureData, file = "~/mnt/genotoul/work/projects/cascade/Rdata/geneWiseData_exonPsi_wgbs.RData")
 
 
 # EPMS------
@@ -97,23 +99,24 @@ dataForAllSamples <- mclapply(
         message(paste(metadata$id[i], "done!"))
         return(dataForPlot)
     },
-    mc.cores = 4, mc.preschedule = FALSE
+    mc.cores = 6, mc.preschedule = FALSE
 )
 Sys.time() - t0 # 2 minutes
-names(dataForAllSamples) <- metadata$short
+names(dataForAllSamples) <- metadata$id
 
 t0 <- Sys.time()
 exonWiseData <- mclapply(
     dataForAllSamples[[1]]$exon_location,
     function(x) extractExonWiseDataFor(x, dataForAllSamples, windows = 19:23), # 19:23 -> -100 +100 bp
-    mc.cores = 12
+    mc.cores = 14
 )
-Sys.time() - t0 # long, 45 minutes
+Sys.time() - t0 # long, 25 minutes
 names(exonWiseData) <- dataForAllSamples[[1]]$exon_location
-save(exonWiseData, file = paste0(preffix, "Rdata/geneWiseData_exonTpm_wgbs.RData"))
+byFeatureData <- exonWiseData
+save(byFeatureData, file = "~/mnt/genotoul/work/projects/cascade/Rdata/geneWiseData_exonTpm_wgbs.RData")
 
 
-# ------------
+# exploratory plots ------------
 
 load("../../Rdata/exonWiseData_cascade.RData")
 library(cowplot)

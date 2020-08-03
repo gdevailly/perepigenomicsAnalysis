@@ -1,9 +1,9 @@
-setwd("/media/gdevailly/SANS TITRE/inra/cascade")
+setwd("/media/gdevailly/DDCRCL/inra/cascade")
 
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/6-plotingFunctions.R")
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/11-geneWiseFunctions.R")
 source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/20-functions_for_histoneMarks.R")
-source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/29-geneWiseFunctions_hisMods.R")
+source("~/mnt/inra_p/projets/cascade/perepigenomicsAnalysis/26_geneWiseFunctions_hisMods.R")
 
 library(readr)
 library(parallel)
@@ -57,6 +57,7 @@ myHisMods <- names(table(his_md$ChIP)[table(his_md$ChIP) > 1])
 # Histone ---------
 preparDataFor <- function(thisHisMod) { # unpure
 
+    message(paste0("Running: ", thisHisMod))
     mdForThisHisMod <- dplyr::filter(his_md, ChIP == thisHisMod)
 
     dataForThisHisMod <- lapply(
@@ -66,22 +67,25 @@ preparDataFor <- function(thisHisMod) { # unpure
                 i, annoTable = exonTable, metadataTable = mdForThisHisMod, metricTable = psis,
                 up = 1000, down = 1000, freq = 50
             )
-            message(paste(mdForThisHisMod$name[i], "done!"))
+            # message(paste(mdForThisHisMod$name[i], "done!"))
             return(hisModData)
         }
     )
-    names(dataForThisHisMod) <- mdForThisHisMod$name
+    names(dataForThisHisMod) <- mdForThisHisMod$cellCode
     dataForThisHisMod <- map(dataForThisHisMod, ~dplyr::rename(.x, gene_id = name))
 
     geneWiseData <- mclapply(
         dataForThisHisMod[[1]]$gene_id,
         function(x) extractGeneWiseDataForHistone(x, dataForThisHisMod, windows = c("X.100", "X.50", "X0", "X50", "X100")),
-        mc.cores = 12
+        mc.cores = 6
     )
     names(geneWiseData) <- dataForThisHisMod[[1]]$gene_id
 
-    assign(thisHisMod, geneWiseData)
-    save(list = thisHisMod, file = paste0(preffix, "Rdata/geneWiseData_exonPsi_", thisHisMod, ".RData"))
+    assign("byFeatureData", geneWiseData)
+    save(byFeatureData, file = paste0(preffix, "Rdata/geneWiseData_exonPsi_", thisHisMod, ".RData"))
+    rm(dataForThisHisMod)
+    rm(geneWiseData)
+    rm(byFeatureData)
 
     return(NULL)
 }
@@ -116,9 +120,10 @@ t0 <- Sys.time()
 Dnase <- mclapply(
     dataForDnase[[1]]$gene_id,
     function(x) extractGeneWiseDataForDnase(x, dataForDnase, windows = c("X.100", "X.50", "X0", "X50", "X100")),
-    mc.cores = 12
+    mc.cores = 14
 )
 Sys.time() - t0
 names(Dnase) <- dataForDnase[[1]]$gene_id
 
-save(Dnase, file = paste0(preffix, "Rdata/geneWiseData_exonPsi_Dnase.RData"))
+byFeatureData <- Dnase
+save(byFeatureData, file = paste0(preffix, "Rdata/geneWiseData_exonPsi_Dnase.RData"))

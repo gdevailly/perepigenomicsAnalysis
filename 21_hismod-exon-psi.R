@@ -91,7 +91,8 @@ plotHisModDataForLine <- function(i) {
 
 t0 <- Sys.time() # 5.7h
 lapply(
-    seq_len(nrow(his_md)),
+    137:242,
+    #seq_len(nrow(his_md)),
     function(i) {
         hisMark <- his_md[i, ]$ChIP
         cellID  <- his_md[i, ]$cellCode
@@ -107,7 +108,7 @@ lapply(
         plotHisModDataForLine(i)
         dev.off()
     } # big memory footprint
-)
+) %>% invisible()
 Sys.time() - t0
 
 
