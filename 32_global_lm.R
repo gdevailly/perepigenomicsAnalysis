@@ -128,7 +128,8 @@ p <- stat_data %>%
     geom_bar(position = position_dodge()) +
     labs(x = "Mark", y = "Number of genes", fill = "Slope:", title = "Linear regression between long gene expression\nand epigenetic mark at TSS") +
     scale_fill_viridis_d(begin = 0.2, end = 0.8, option = "cividis") +
-    coord_cartesian(ylim = c(0, 2500)) +
+    coord_cartesian(ylim = c(0, 1000)) +
+    scale_y_continuous(sec.axis = sec_axis(~ . / length(long), labels = scales::percent)) +
     theme_bw(base_size = 16) +
     theme(axis.text.x = element_text(angle = 20, hjust = 0.8))
 ggsave(p, filename = "plots/global_lm_6marks_tss_long_only.png", width = 7, height = 5)
