@@ -7,8 +7,6 @@ library(purrr)
 library(jsonlite)
 library(UpSetR)
 
-load("data/modelData/model_geneWiseData_tss_cascade.RData", verbose = TRUE)
-
 sym2genes <- readr::read_tsv("data/gene_list.tsv")
 
 tss <- list.files("data/modelData/", pattern = "_tss_", full.names = TRUE)
@@ -269,54 +267,3 @@ p <- dfp %>%
     labs(y = "% of top 1000 correlated genes\nwith a CGI near their TSS", x = NULL)
 
 ggsave("../perepigenomics_revision/cgi_plot.png", plot = p, width = 4, height = 6)
-
-
-# old scripts -------------
-sym2genes <- sym2genes %>%
-    select(X4, X8) %>%
-    mutate(X4 = sub("\\.[0-9]*$", "", X4)) %>%
-    distinct()
-g2s <- sym2genes$X8
-names(g2s) <- sym2genes$X4
-
-posgenes <- g2s[dplyr::filter(modelTable, r2_mCpG_ratio >= 0.25, sl_mCpG_ratio > 0)$gene_id] %>% sub("/", "", .)
-neggenes <- g2s[dplyr::filter(modelTable, r2_mCpG_ratio >= 0.25, sl_mCpG_ratio < 0)$gene_id] %>% sub("/", "", .)
-nulgenes <- g2s[dplyr::filter(modelTable, r2_mCpG_ratio < 0.25)$gene_id]                     %>% sub("/", "", .)
-
-write.table(posgenes, file = "wgbs_tss_r2_0.25_slope_positive.txt", col.names = F, row.names = F, quote = FALSE)
-write.table(neggenes, file = "wgbs_tss_r2_0.25_slope_negative.txt", col.names = F, row.names = F, quote = FALSE)
-write.table(nulgenes, file = "wgbs_tss_r2_0.25_null_genes.txt"    , col.names = F, row.names = F, quote = FALSE)
-
-# CpG islands -------------
-cgi <- data.table::fread("http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/cpgIslandExtUnmasked.txt.gz")
-cgi <- with(cgi, GRanges(V2, IRanges(V3, V4)))
-
-genes <- readr::read_tsv("data/annotation/gencode.v29.annotation.hg19.middleTSS.bed", col_names = F)
-
-genesgr <- with(genes, GRanges(X1, IRanges(X2, X3), gene_id = X4))
-
-
-dists <- as.data.frame(distanceToNearest(genesgr, cgi))
-genes <- left_join(
-    mutate(genes, X = 1:nrow(genes)),
-    dists,
-    by= c("X" = "queryHits")
-) %>% mutate(X4 = sub("\\.[0-9]*$", "", X4))
-
-
-
-posgenes <- dplyr::filter(modelTable, r2_mCpG_ratio >= 0.25, sl_mCpG_ratio > 0)$gene_id
-neggenes <- dplyr::filter(modelTable, r2_mCpG_ratio >= 0.25, sl_mCpG_ratio < 0)$gene_id
-nulgenes <- dplyr::filter(modelTable, r2_mCpG_ratio < 0.25)$gene_id
-
-dfp <- bind_rows(
-    tibble(type = "posgenes", distance = dplyr::filter(genes, X4 %in% posgenes)$distance),
-    tibble(type = "neggenes", distance = dplyr::filter(genes, X4 %in% neggenes)$distance),
-    tibble(type = "nulgenes", distance = dplyr::filter(genes, X4 %in% nulgenes)$distance)
-)
-
-ggplot(dfp, aes(x = type, y = distance + 1)) +
-    geom_violin() +
-    geom_boxplot() +
-    scale_y_log10()
-

@@ -1,14 +1,18 @@
-library(tidyverse)
-library(furrr); plan(multiprocess(workers = availableCores() - 2))
+# setwd("~/work/project/perepigenomics_app")
+
+library(dplyr)
+library(purrr)
+library(furrr); plan(multiprocess(workers = availableCores() - 1))
 library(parallel)
+library(readr)
 
-metadata <- read_tsv("perepigenomics/data/availableByFeature.tsv")
+metadata <- read_tsv("data/availableByFeature.tsv")
 
-loadData <- function(md, what = "TSS", path = "perepigenomics/data/Rdata/") {
+loadData <- function(md, what = "TSS", path = "data/Rdata/") {
     files <- filter(md, feature == what)$file %>%
         set_names(filter(md, feature == what)$assay)
     ret <- furrr::future_map(seq_along(files), function(x) {
-        load(here(path, files[x]))
+        load(file.path(path, files[x]))
         byFeatureData
     })
     set_names(ret, names(files))
@@ -33,12 +37,12 @@ table_data <- mclapply(
         }
         reduce(gene_data, full_join, by = "cell_type")
     },
-    mc.cores = 12
+    mc.cores = 3
 )
 
 names(table_data) <- names(TSS[[1]])
 
-save(table_data, file = here("data/full_model_tss.RData"))
+save(table_data, file = "../perepigenomics_revision/full_model_tss.RData")
 
 # New session --------------------
 library(tidyverse)
@@ -114,7 +118,7 @@ long <- filter(genemd, length_type == "long")$ensg
 
 p <- stat_data %>%
     filter(gene %in% long) %>%
-    filter(term != "intercept") %>% # TODO : ask Yann how to interpret intercept
+    filter(term != "intercept") %>%
     mutate(slope = case_when(
         p.value <= 0.01 & estimate > 0 ~ "Positive",
         p.value <= 0.01 & estimate < 0 ~ "Negative",
