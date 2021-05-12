@@ -48,8 +48,9 @@ save(table_data, file = "../perepigenomics_revision/full_model_tss.RData")
 library(tidyverse)
 library(furrr); plan(multiprocess(workers = availableCores() - 2))
 library(parallel)
+library(patchwork)
 
-load("data/full_model_tss.RData")
+load("../perepigenomics_revision/full_model_tss.RData")
 
 layout(rbind(1, 2))
 as.matrix(select(table_data[[1]], -cell_type)) %>%
@@ -113,7 +114,7 @@ p <- stat_data %>%
     theme(axis.text.x = element_text(angle = 20, hjust = 0.8))
 ggsave(p, filename = "plots/global_lm_6marks_tss.png", width = 7, height = 5)
 
-genemd <- read_tsv("perepigenomics/data/gene_list.tsv")
+genemd <- read_tsv("data/gene_list.tsv")
 long <- filter(genemd, length_type == "long")$ensg
 
 p <- stat_data %>%
@@ -137,6 +138,44 @@ p <- stat_data %>%
     theme_bw(base_size = 16) +
     theme(axis.text.x = element_text(angle = 20, hjust = 0.8))
 ggsave(p, filename = "plots/global_lm_6marks_tss_long_only.png", width = 7, height = 5)
+
+
+prot <- filter(genemd, gene_type == "protein_coding")$ensg
+lincRNA <- filter(genemd, gene_type == "lincRNA")$ensg
+anti <- filter(genemd, gene_type == "antisense")$ensg
+pseud <- filter(genemd, gene_type == "processed_pseudogene")$ensg
+
+plot_hist <- function(gene_list, title = "blank") {
+    stat_data %>%
+        filter(gene %in% gene_list) %>%
+        filter(term != "intercept") %>%
+        mutate(slope = case_when(
+            p.value <= 0.01 & estimate > 0 ~ "Positive",
+            p.value <= 0.01 & estimate < 0 ~ "Negative",
+            p.value >  0.01                 ~ "N.S."      ,
+            TRUE                            ~ "N.D."
+        )) %>%
+        filter(slope %in% c("Positive", "Negative")) %>%
+        mutate(term = sub("mCpG_ratio", "DNAme", term, fixed = TRUE)) %>%
+        mutate(term = factor(term, levels = c("DNAme", "H3K4me1", "H3K4me3", "H3K9me3", "H3K27me3", "H3K36me3"))) %>%
+        ggplot(aes(x = term, fill = slope)) +
+        geom_bar(position = position_dodge()) +
+        labs(x = "Mark", y = "Number of genes", fill = "Slope:",
+             title = paste(title, "gene expression\nand epigenetic mark at TSS")
+        ) +
+        scale_fill_viridis_d(begin = 0.2, end = 0.8, option = "cividis") +
+        # coord_cartesian(ylim = c(0, 1000)) +
+        scale_y_continuous(sec.axis = sec_axis(~ . / length(gene_list), labels = scales::percent)) +
+        theme_bw(base_size = 16) +
+        theme(axis.text.x = element_text(angle = 20, hjust = 0.8), legend.position = "bottom")
+}
+
+(plot_hist(prot, title = "Protein coding") | plot_hist(lincRNA, title = "lincRNA")) /
+    (plot_hist(anti, title = "Antisense") | plot_hist(pseud, title = "Processed pseudogene")) /
+    (guide_area()) + plot_layout(guides = 'collect', heights = c(1, 1, 0.15)) +
+    plot_annotation(tag_levels = 'A')
+
+ggsave(filename = "../perepigenomics_revision/global_lm_6marks_tss_gene_type.png", width = 12, height = 11)
 
 
 # TTS -----------------
