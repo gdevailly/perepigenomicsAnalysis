@@ -57,3 +57,25 @@ p <- ggplot(dfp, aes(x = mark_value, y = log10(exp + 1), colour = cell)) +
     theme_bw()
 
 ggsave("../perepigenomics_revision/tissue_specific.png", plot = p, width = 8, height = 8)
+
+
+# gene lengths ------------
+library(dplyr)
+library(ggplot2)
+library(GenomicRanges)
+library(purrr)
+
+sym2genes <- readr::read_tsv("data/gene_list.tsv")
+
+p <- ggplot(sym2genes, aes(
+        x = forcats::fct_rev(forcats::fct_infreq(gene_type)),
+        fill = factor(length_type, levels = c("short", "intermediate", "long"))
+    )) +
+    geom_bar(position = position_dodge(preserve = "single")) +
+    labs(x = "", fill = "Gene length:") +
+    coord_flip() +
+    theme_bw() +
+    theme(legend.position = "right")
+
+ggsave("../perepigenomics_revision/gene_length_cat.png", plot = p, width = 6, height = 4)
+
