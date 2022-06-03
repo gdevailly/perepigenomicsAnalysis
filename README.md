@@ -24,7 +24,7 @@ BiocManager::install("{packagename}")
 
 where {packagename} is replaced by the package name. For example, to install Repitools:
 ```r
-BiocManager::install("{Repitools}")
+BiocManager::install("Repitools")
 ```
 
 Do not hesitate to contact us, for example by creating an issue in this reppository.
